@@ -1,0 +1,46 @@
+End your final answers underneath the headers: '### Method Parameters,' '### Method Task,' '### Method Subtasks,' and then split your answer with '## NEXT METHOD' for the next METHOD. End your response with '## New predicates' with answer in ``` [PREDICATES] ``` as so:
+
+"""
+[Method name]
+### Method Parameters
+```
+- ?t - type: 'parameter_description'
+```
+
+### Method Task
+```
+(task_name ?t1 ?t2) ; COMMENT DESCRIPTION
+
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (task_name1 ?t1 ?t2) ; COMMENT DESCRIPTION
+    (task_name2 ?t3 ?t4) ; COMMENT DESCRIPTION
+)
+```
+
+## NEXT METHOD
+[Method name]
+### Method Parameters
+```
+- ?t - type: 'parameter_description'
+```
+
+### Method Task
+```
+(task_name ?t1 ?t2) ; COMMENT DESCRIPTION
+
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (task_name1 ?t1 ?t2) ; COMMENT DESCRIPTION
+    (task_name2 ?t3 ?t4) ; COMMENT DESCRIPTION
+)
+```
+"""
+
+and so on...

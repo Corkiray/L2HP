@@ -4,7 +4,7 @@ This file contains collection of functions for extracting/parsing information fr
 
 from pddl.formatter import domain_to_string, problem_to_string
 from pddl import parse_domain, parse_problem
-from .pddl_types import Action, Predicate
+from .pddl_types import Action, Predicate, Task, Method
 from collections import OrderedDict
 from copy import deepcopy
 import re, ast, json, sys, os
@@ -60,7 +60,6 @@ def parse_params(llm_output):
             print(f"[WARNING] checking param object types - fail to parse: {line}")
             break
     return params_info, params_raw
-
 
 def parse_new_predicates(llm_output) -> list[Predicate]:
     """
@@ -510,3 +509,136 @@ def check_parse_problem(file_path: str):
         print(f"Error parsing domain: {e}", file=sys.stderr)
         print("------------------")
         sys.exit(1)
+
+
+# ------------------- HTN Functions -------------------- #
+
+def parse_tasks(llm_response: str) -> list[Task]:
+    """
+    Extracts HTN Tasks from LLM response and returns it as a list of dict strings
+
+    Args:
+        llm_response (str): The LLM output.
+
+    Returns:
+        list[task]): list of tasks
+    """
+    new_tasks = list()
+    try:
+        tasks_heading = (
+            llm_response.split("New Tasks\n")[1].strip().split("###")[0]
+        )
+    except:
+        raise Exception(
+            "Could not find the 'New Tasks' section in the output. Provide the entire response, including all headings even if some are unchanged."
+        )
+    tasks_output = combine_blocks(tasks_heading)
+
+    for p_line in tasks_output.split("\n"):
+        if ("." not in p_line or not p_line.split(".")[0].strip().isdigit()) and not (
+            p_line.startswith("-") or p_line.startswith("(")
+        ):
+            if len(p_line.strip()) > 0:
+                print(f'[WARNING] unable to parse the line: "{p_line}"')
+            continue
+        task_info = p_line.split(": ")[0].strip(" 1234567890.(-)`").split(" ")
+        task_name = task_info[0]
+        task_desc = p_line.split(": ")[1].strip() if ": " in p_line else ""
+
+        # get the predicate type info
+        if len(task_info) > 1:
+            task_params_info = task_info[1:]
+            task_params_info = [
+                l.strip(" ()`") for l in task_params_info if l.strip(" ()`")
+            ]
+        else:
+            task_params_info = []
+        params = OrderedDict()
+        next_is_type = False
+        upcoming_params = []
+
+        for p in task_params_info:
+            if next_is_type:
+                if p.startswith("?"):
+                    print(
+                        f"[WARNING] `{p}` is not a valid type for a variable, but it is being treated as one. Should be checked by syntax check later."
+                    )
+                for up in upcoming_params:
+                    params[up] = p
+                next_is_type = False
+                upcoming_params = []
+            elif p == "-":
+                next_is_type = True
+            elif p.startswith("?"):
+                upcoming_params.append(p)  # the next type will be for this variable
+            else:
+                print(
+                    f"[WARNING] `{p}` is not corrrectly formatted. Assuming it's a variable name."
+                )
+                upcoming_params.append(f"?{p}")
+        if next_is_type:
+            print(
+                f"[WARNING] The last type is not specified for `{p_line}`. Undefined are discarded."
+            )
+        if len(upcoming_params) > 0:
+            print(
+                f"[WARNING] The last {len(upcoming_params)} is not followed by a type name for {upcoming_params}. These are discarded"
+            )
+
+        # generate a clean version of the predicate
+        clean = f"({task_name} {' '.join([f'{k} - {v}' for k, v in params.items()])}): {task_desc}"
+
+        # drop the index/dot
+        p_line = p_line.strip(" 1234567890.-`")
+        new_tasks.append(
+            {
+                "name": task_name,
+                "desc": task_desc,
+                "raw": p_line,
+                "params": params,
+                "clean": clean,
+            }
+        )
+     
+    return new_tasks
+
+def parse_method(llm_response: str, method_name: str) -> Method:
+    """
+    Parse a method from a given LLM output.
+
+    Args:
+        llm_response (str): The LLM output.
+        method_name (str): The name of the method.
+
+    Returns:
+        Method: The parsed method.
+    """
+    parameters, _ = parse_params(llm_response)
+    try:
+        task = (
+            llm_response.split("Method Task\n")[1]
+            .split("###")[0]
+            .split("```")[1]
+            .strip(" `\n")
+        )
+    except:
+        raise Exception(
+            "Could not find the 'Method Task' section in the output. Provide the entire response, including all headings even if some are unchanged."
+        )
+    try:
+        subtasks = (
+            llm_response.split("Method Ordered Subtasks\n")[1]
+            .split("###")[0]
+            .split("```")[1]
+            .strip(" `\n")
+        )
+    except:
+        raise Exception(
+            "Could not find the 'Method Ordered Subtasks' section in the output. Provide the entire response, including all headings even if some are unchanged."
+        )
+    return {
+        "name": method_name,
+        "params": parameters,
+        "task": task,
+        "ordered_subtasks": subtasks,
+    }

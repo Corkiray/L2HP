@@ -26,7 +26,7 @@ class Action(TypedDict):
     params: ParameterList
     preconditions: str
     effects: str
-
+    
 
 # Domain details data class including predicates and actions
 @dataclass
@@ -56,3 +56,20 @@ class ProblemDetails:
 class PlanDetails:
     plan_pddl: str
     plan_nl: str
+
+
+# HTN Types data classes
+class Task(TypedDict):
+    name: str
+    desc: Optional[str]
+    raw: str
+    params: ParameterList
+    clean: str
+
+class Method(TypedDict):
+    name: str
+    params: ParameterList
+    desc: Optional[str]
+    raw: str
+    task: Task
+    ordered_subtasks: str
