@@ -57,14 +57,16 @@ class MainBuilder(DomainBuilder, TaskBuilder):
 
         model.reset_tokens()
 
-        prompt_template = prompt_template.replace("{task_desc}", task_desc)
+        prompt = prompt_template.replace("{task_desc}", task_desc)
 
         # iterate through attempts in case of extraction failure
         for attempt in range(max_retries):
             try:
                 model.reset_tokens()
 
-                llm_response = model.query(prompt=prompt_template)
+                llm_response = model.query(prompt)
+                
+                print(llm_response)
 
                 # extract respective types from response
                 types_fragment = llm_response.split("## TYPES")[1].split("##")[0]

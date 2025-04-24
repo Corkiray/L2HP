@@ -34,7 +34,10 @@ predicates, llm_output = domain_builder.extract_predicates(
     nl_actions={action['action_name']: action['action_desc']}
     )
 
+print(extract_predicates_prompt)
 # format key info into PDDL strings
 PREDICATE_STR = "\n".join([pred["clean"].replace(":", " ; ") for pred in predicates])
 
 print(f"PDDL domain predicates:\n{PREDICATE_STR}")
+print(f"LLM output:\n{llm_output}")
+print(f"Predicates:\n{predicates}")

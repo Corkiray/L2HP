@@ -11,7 +11,6 @@ from typing_extensions import override
 
 LOG: logging.Logger = logging.getLogger(__name__)
 
-
 def require_llm(func):
     """
     Decorator to check if an LLM instance is provided and catch errors.
@@ -83,6 +82,62 @@ class LLM(ABC):
         return []
 
 
+class InferenceClient(LLM):
+    def __init__(self, provider: str, model: str, api_key: str, max_tokens: int) -> None:
+        self.model = model
+        super().__init__(model, api_key)
+        self.provider = provider
+        self.max_tokens = max_tokens
+
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError:
+            raise ImportError(
+                "The 'huggingface_hub' library is required for but is not installed. "
+            )
+
+
+        self.client = InferenceClient(provider=provider, api_key=api_key)
+        self.in_tokens = 0
+        self.out_tokens = 0
+
+    def query(self, prompt: str) -> str:
+        completion = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            max_tokens=self.max_tokens,
+        )
+
+        return completion.choices[0].message.content
+
+    def query_with_system_prompt(self, system_prompt: str, prompt: str) -> str:
+        completion = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {   "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            max_tokens=self.max_tokens,
+        )
+
+        return completion.choices[0].message.content
+
+    def get_tokens(self) -> tuple[int, int]:
+        return self.in_tokens, self.out_tokens
+
+    def reset_tokens(self):
+        self.in_tokens = 0
+        self.out_tokens = 0
 class OPENAI(LLM):
     """Accessing OpenAI"""
 
@@ -258,8 +313,6 @@ class OPENAI(LLM):
             "gpt-4-32k",
             "gpt-4o",
             "gpt-4o-mini",
-            "o1",
-            "o3-mini"
         ]
 
 

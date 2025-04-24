@@ -1,3 +1,22 @@
+# This file is used to install the required packages for the project.
+# It is recommended to create a virtual environment before installing the packages.
+
+# This requierments are from the original L2P Project
 retry
 pddl
 typing_extensions
+
+# The following packages are required for the Local LLM execution.
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch
+torchvision
+torchaudio
+transformers==4.46.0
+accelerate==1.6.0
+
+# Apriorily, the following packages are NOT required, but could be needed in case of some error.
+#jupyter==1.0.0
+#tensorflow==2.17.0
+#torch==2.5.0
+#flax==0.10.0
+#vllm==0.6.4.post1
