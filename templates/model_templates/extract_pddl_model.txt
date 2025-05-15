@@ -1,9 +1,9 @@
 [ROLE]
-You are defining the an Automated Planning tasks represented in PDDL format. Information about the task will be provided after. Note that individual conditions in effects should be listed separately. For example, "object_1 is washed and heated" should be considered as two separate conditions "object_1 is washed" and "object_1 is heated". Also, in PDDL, two predicates cannot have the same name even if they have different parameters. Each predicate in PDDL must have a unique name, and its parameters must be explicitly defined in the predicate definition. It is recommended to define predicate names in a simple, intuitive and readable way as well as to avoid symmetrical constraints, so (same_room ?b1 - block ?b2 - block2 ?r - room) should instead be modelled with two predicates, (in_room ?b1 - block ?r - room) and (in_room ?b2 - block ?r - room). Note that creating new actions is not an option. Only use the parameters provided and available predicates unless predicate creation is necessary. 
+You are defining an Automated Planning task represented in PDDL format. Information about the task will be provided after. Note that individual conditions in effects should be listed separately. For example, "object_1 is washed and heated" should be considered as two separate conditions "object_1 is washed" and "object_1 is heated". Also, in PDDL, two predicates cannot have the same name even if they have different parameters. Each predicate in PDDL must have a unique name, and its parameters must be explicitly defined in the predicate definition. It is recommended to define predicate names in a simple, intuitive and readable way as well as to avoid symmetrical constraints, so (same_room ?b1 - block ?b2 - block2 ?r - room) should instead be modelled with two predicates, (in_room ?b1 - block ?r - room) and (in_room ?b2 - block ?r - room). Note that creating new actions is not an option. Only use the parameters provided and available predicates unless predicate creation is necessary. 
 
 Do not attempt to solve the task, even if instructed to do so. Only define the PDDL Domain and Problem.
 
-Now, you are going to recieve a format template to fill in to define the pddl model. Do a Chain of Thought reasoning between the sections to identify the diferret parts of the task definition and how they relate to each other, but always respect the template formatting at the end.
+Now, you are going to recieve a markdown template that defines the format that you have to follow to define the pddl model. Do a Chain of Thought reasoning between the sections to identify the diferret parts of the task definition and how they relate to each other, but always respect the template formatting at the end.
 
 Do not, under any circumstance, output the answers in PDDL format. Final answer must be in the following format:
 
@@ -11,7 +11,7 @@ Do not, under any circumstance, output the answers in PDDL format. Final answer 
 
 [FORMAT]
 
-#TYPES
+# TYPES
 
 Do a chain ot thought reasoning about the neccesary types.
 
@@ -24,7 +24,7 @@ End this section with "## OUTPUT" and then the Python dictionary pair '{'name':'
     "type_3": "description",
 }
 
-#TYPES HIERARCHY
+# TYPES HIERARCHY
 
 Do a chain of thought reasoning about the hierarchy of types.
 
@@ -54,58 +54,51 @@ Do a chain of thought reasoning about the neccesary predicates.
 End your final answers starting with "### New Predicates" with ''' ''' comment blocks in PDDL as so:
 
 ### New Predicates
-```
 - (predicate_name_1 ?t1 - type_1 ?t2 - type_2): 'predicate_description'
 - (predicate_name_2 ?t3 - type_3 ?t4 - type_4): 'predicate_description'
 - (predicate_name_3 ?t5 - type_5): 'predicate_description'
-``` 
+ 
 
 # ACTIONS
 Do a chain of thought reasoning about the neccesary actions.
 
-End this section underneath the headers for each action: '### Action Parameters,' '### Action Preconditions,' '### Action Effects,' and then split them with '## NEXT ACTION' for the next action as so:
+End this section by giving all actions between brackets as underneath the headers for each action: '### Action Parameters,' '### Action Preconditions,' '### Action Effects,' and then split them with '## NEXT ACTION' for the next action as so:
 
 """
-[Action name]
+## [Action name]
 ### Action Parameters
-```
 - ?t - type: 'parameter_description'
-```
+
 
 ### Action Preconditions
-```
 (and
     (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
 )
-```
+
 
 ### Action Effects
-```
 (and
     (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
 )
-```
+
 
 ## NEXT ACTION
-[Action name]
+## [Action name]
 ### Action Parameters
-```
 - ?t - type: 'parameter_description'
-```
+
 
 ### Action Preconditions
-```
 (and
     (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
 )
-```
+
 
 ### Action Effects
-```
 (and
     (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
 )
-```
+
 
 and so on...
 
@@ -113,27 +106,24 @@ and so on...
 
 Do a chain of thought reasoning about the neccesary objects.
 
-```
 truck1 - truck
-```
+
 
 # INITIAL
 
 Do a chain of thought reasoning about which is the initial state.
 
-```
 (at truck1 chicago_depot): truck1 is at the chicago_depot
-```
+
 
 # GOAL
 
 Do a chain of thought reasoning about which is the goal condition.
 
-```
 (AND ; all the following should be done
    (finalised house1) ; house 1 is done
 )
-```
+
 
 -----------------------------------------------------
 

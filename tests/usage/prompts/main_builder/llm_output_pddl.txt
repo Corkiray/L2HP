@@ -1,0 +1,196 @@
+
+# TYPES
+
+We begin by identifying the relevant entities in the domain. The domain involves "blocks", an "arm", and a "table". However, the table is implicitly modeled by whether a block is "on the table" rather than being treated as an object. The arm itself is not handled as an object either—its state (holding or empty) is modeled by predicates. Hence, the only physical objects requiring type definitions are the **blocks**.
+
+Since there's only one type of manipulable object (blocks), and the arm and table are handled implicitly, only one type is needed.
+
+## OUTPUT
+```python
+{
+    "block": "manipulable object that can be stacked, unstacked, picked up, or put down"
+}
+```
+
+# TYPES HIERARCHY
+
+There is only one type: `block`. There are no subtypes or supertypes to be inferred from the domain description. The arm and table are not modeled as objects, so no additional types are necessary.
+
+## OUTPUT
+```python
+{
+    "block": "basic stackable object",
+    "children": []
+}
+```
+
+# PREDICATES
+
+We identify the necessary predicates to represent the state of the world. We need to express:
+- Whether a block is on the table.
+- Whether a block is clear (nothing on top).
+- Whether a block is on top of another block.
+- Whether the robot arm is holding a block.
+- Whether the arm is empty.
+
+Each predicate must have a unique name. Even though predicates like "on" and "on-table" may be conceptually similar, we must differentiate them in name and parameters. 
+
+Thus, the predicate set includes:
+- `(on-table ?b - block)`: the block is on the table.
+- `(clear ?b - block)`: nothing is on top of the block.
+- `(on ?b1 - block ?b2 - block)`: block b1 is on top of block b2.
+- `(holding ?b - block)`: the robot is currently holding block b.
+- `(arm-empty)`: the robot’s arm is currently empty.
+
+### New Predicates
+```
+- (on-table ?b - block): 'block is resting on the table'
+- (clear ?b - block): 'block has nothing on top'
+- (on ?b1 - block ?b2 - block): 'block b1 is directly on top of block b2'
+- (holding ?b - block): 'the robot is holding block b'
+- (arm-empty): 'the robot’s arm is empty'
+```
+
+# ACTIONS
+
+Now we define each action with its parameters, preconditions, and effects.
+
+## [pickup]
+### Action Parameters
+```
+- ?b - block: 'the block to be picked up from the table'
+```
+
+### Action Preconditions
+```
+(and
+    (on-table ?b) ; block must be on the table
+    (clear ?b) ; nothing is on top of the block
+    (arm-empty) ; arm must be free to pick up a block
+)
+```
+
+### Action Effects
+```
+(and
+    (not (on-table ?b)) ; block is no longer on the table
+    (not (clear ?b)) ; block is no longer clear as it's held
+    (not (arm-empty)) ; arm is no longer empty
+    (holding ?b) ; robot is now holding the block
+)
+```
+
+## NEXT ACTION
+## [putdown]
+### Action Parameters
+```
+- ?b - block: 'the block to be placed on the table'
+```
+
+### Action Preconditions
+```
+(and
+    (holding ?b) ; robot must be holding the block
+)
+```
+
+### Action Effects
+```
+(and
+    (on-table ?b) ; block is placed on the table
+    (clear ?b) ; block becomes clear
+    (arm-empty) ; arm becomes empty
+    (not (holding ?b)) ; robot is no longer holding the block
+)
+```
+
+## NEXT ACTION
+## [stack]
+### Action Parameters
+```
+- ?b1 - block: 'the block to stack on another'
+- ?b2 - block: 'the block on which the first block is stacked'
+```
+
+### Action Preconditions
+```
+(and
+    (holding ?b1) ; robot must be holding the top block
+    (clear ?b2) ; bottom block must be clear
+)
+```
+
+### Action Effects
+```
+(and
+    (on ?b1 ?b2) ; b1 is on top of b2
+    (clear ?b1) ; top block becomes clear
+    (arm-empty) ; robot is no longer holding a block
+    (not (clear ?b2)) ; bottom block is no longer clear
+    (not (holding ?b1)) ; robot is no longer holding b1
+)
+```
+
+## NEXT ACTION
+## [unstack]
+### Action Parameters
+```
+- ?b1 - block: 'the block on top to be removed'
+- ?b2 - block: 'the block underneath b1'
+```
+
+### Action Preconditions
+```
+(and
+    (on ?b1 ?b2) ; b1 is on top of b2
+    (clear ?b1) ; b1 must be clear
+    (arm-empty) ; arm must be empty
+)
+```
+
+### Action Effects
+```
+(and
+    (holding ?b1) ; robot is now holding b1
+    (clear ?b2) ; b2 becomes clear
+    (not (on ?b1 ?b2)) ; b1 is no longer on b2
+    (not (clear ?b1)) ; b1 is no longer clear
+    (not (arm-empty)) ; robot arm is no longer empty
+)
+```
+
+# OBJECTS
+
+We assume there are some example blocks, say A, B, and C.
+
+```
+a - block
+b - block
+c - block
+```
+
+# INITIAL
+
+Assuming the initial state is that all blocks are on the table and clear, and the arm is empty:
+
+```
+(on-table a): a is on the table
+(clear a): nothing is on a
+(on-table b): b is on the table
+(clear b): nothing is on b
+(on-table c): c is on the table
+(clear c): nothing is on c
+(arm-empty): the robot's arm is empty
+```
+
+# GOAL
+
+Suppose the goal is to stack block A on block B, and block B on block C, and all others are clear:
+
+```
+(AND ; all the following should be done
+   (on a b) ; a on b
+   (on b c) ; b on c
+   (clear a) ; a is clear
+)
+```

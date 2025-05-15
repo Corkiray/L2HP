@@ -3,6 +3,7 @@ This file contains collection of functions for HDDL domain and problem generatio
 """
 
 import re, time
+import traceback
 from collections import OrderedDict
 from .utils import *
 from .llm_builder import LLM, require_llm
@@ -15,7 +16,7 @@ class MainBuilder(DomainBuilder, TaskBuilder):
     """
     isHTN: bool
     
-    def __init__(self, isHTN: bool = True):
+    def __init__(self, domain_name, problem_name, isHTN: bool = False):
         """
         Initializes the MainBuilder class.
 
@@ -24,6 +25,8 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         """
         super().__init__()
         self.isHTN = isHTN
+        self.domain_name = domain_name
+        self.problem_name = problem_name
     
     @require_llm
     def extract_domain_and_problem(
@@ -66,22 +69,22 @@ class MainBuilder(DomainBuilder, TaskBuilder):
 
                 llm_response = model.query(prompt)
                 
-                print(llm_response)
+                # print(llm_response)
 
                 # extract respective types from response
-                types_fragment = llm_response.split("## TYPES")[1].split("##")[0]
+                types_fragment = llm_response.split("# TYPES")[1].split("\n# ")[0].split("\n## OUTPUT")[1]
                 types = convert_to_dict(llm_response=types_fragment)
-                
-                types_hierarchy_fragment = llm_response.split("## TYPES HIERARCHY")[1].split("##")[0]
+                types_hierarchy_fragment = llm_response.split("# TYPES HIERARCHY")[1].split("\n# ")[0].split("\n## OUTPUT")[1]
                 type_hierarchy = convert_to_dict(llm_response=types_hierarchy_fragment)
                 
                 # extract respective types predicates and tasks from response
                 predicates = parse_new_predicates(llm_response)
-                if self.isHTN: 
+  
+                if self.isHTN:
                     tasks = parse_tasks(llm_response)
                         
                 # extract respective actions from response
-                raw_actions = llm_response.split("## NEXT ACTION")
+                raw_actions = llm_response.split("\n# ACTIONS")[1].split("\n## NEXT ACTION")
                 actions = []
                 for i in raw_actions:
                     # define the regex patterns
@@ -122,9 +125,23 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                         )
                             
                 # extract respective Problem types from response
+                print(llm_response)
                 objects = parse_objects(llm_response)
                 initial = parse_initial(llm_response)
                 goal = parse_goal(llm_response)
+
+                self.types = types
+                self.type_hierarchy = type_hierarchy
+                self.predicates = predicates
+                self.actions = actions
+                self.objects = objects
+                self.initial = initial
+                self.goal = goal
+                
+                if self.isHTN:
+                    self.tasks = tasks
+                    self.methods = methods
+                
 
                 if self.isHTN:
                     return types, type_hierarchy, tasks, methods, actions, predicates, objects, initial, goal, llm_response
@@ -135,6 +152,7 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                 print(
                     f"Error encountered: {e}. Retrying {attempt + 1}/{max_retries}..."
                 )
+                print(traceback.format_exc())
                 time.sleep(2)  # add a delay before retrying
 
         raise RuntimeError("Max retries exceeded. Failed to extract task.")
@@ -174,41 +192,75 @@ class MainBuilder(DomainBuilder, TaskBuilder):
             desc += "\n\n" + indent(self.method_desc(method), level=1)
         return desc
     
-    def generate_hddl_domain(
-        self,
-        domain: str,
-        types: str,
-        predicates: str,
-        tasks: list[Task],
-        methods: list[Method],
-        actions: list[Action],
-        requirements: list[str],
-    ) -> str:
+    def get_domain(self) -> str:
         """
         Generates PDDL domain from given information
 
         Args:
             domain (str): domain name
-            types (str): domain types
-            predicates (str): domain predicates
-            actions (list[Action]): domain actions
-            requirements (list[str]): domain requirements
+            self.types (str): domain types
+            self.predicates (str): domain predicates
+            self.actions (list[Action]): domain actions
+            self.requirements (list[str]): domain requirements
 
         Returns:
             desc (str): PDDL domain
         """
+        
+        #Extract types string
+        types = format_types(self.type_hierarchy)  # retrieve types
+        pruned_types = {
+            name: description
+            for name, description in types.items()
+        }
+        types_str = "\n".join(pruned_types)
+        
+        #Extract predicates string
+        predicate_str = "\n".join(
+            [pred["clean"].replace(":", " ; ") for pred in self.predicates]
+        ) 
+        
         desc = ""
-        desc += f"(define (domain {domain})\n"
+        desc += f"(define (domain {self.domain_name})\n"
         desc += (
-            indent(string=f"(:requirements\n   {' '.join(requirements)})", level=1)
+            indent(string=f"(:requirements\n   {' '.join(self.requirements)})", level=1)
             + "\n\n"
         )
-        desc += f"   (:types \n{indent(string=types, level=2)}\n   )\n\n"
-        desc += f"   (:predicates \n{indent(string=predicates, level=2)}\n   )"
+        desc += f"   (:types \n{indent(string=types_str, level=2)}\n   )\n\n"
+        desc += f"   (:predicates \n{indent(string=predicate_str, level=2)}\n   )"
         if self.isHTN:
-            desc += self.tasks_descs(tasks)
-            desc += self.method_descs(methods)
-        desc += self.action_descs(actions)
+            desc += self.tasks_descs(self.tasks)
+            desc += self.method_descs(self.methods)
+        desc += self.action_descs(self.actions)
         desc += "\n)"
         desc = desc.replace("AND", "and").replace("OR", "or")
+        return desc
+
+
+    def get_problem(self) -> str:
+        """
+        Generates PDDL problem from given information
+        Args:
+            self.domain_name (str): domain name
+            self.problem_name (str): problem name
+            self.objects (str): domain objects
+            self.initial (str): domain initial state
+            self.goal (str): domain goal state
+        Returns:
+            desc (str): PDDL problem
+        """
+        # construct PDDL components into PDDL problem file
+        object_str = self.format_objects(self.objects)
+        initial_state_str = self.format_initial(self.initial)
+        goal_state_str = self.format_goal(self.goal)
+
+        # print(object_str)
+        # generate proper PDDL structure
+        desc = self.generate_task(
+            self.domain_name,
+            self.problem_name,
+            object_str,
+            initial_state_str,
+            goal_state_str,
+        )
         return desc

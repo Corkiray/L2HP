@@ -1,0 +1,258 @@
+# TYPES
+
+We need to consider the objects involved in the domain. From the description, the robot interacts with:
+- Blocks: these are the main manipulable entities that can be stacked or placed on the table.
+- The Arm: the manipulator that holds a block.
+- The Table: a surface on which blocks can be placed.
+
+Thus, we define three primary types: `block`, `arm`, and `table`.
+
+## OUTPUT
+```python
+{
+    "block": "Objects that can be picked up, stacked, or placed on the table",
+    "arm": "Manipulator that can hold one block at a time",
+    "table": "Surface where blocks can be placed"
+}
+```
+
+# TYPES HIERARCHY
+
+There is no need for deep hierarchies in this simple domain. All the types are distinct, and none are subtypes of the others.
+
+## OUTPUT
+```python
+{
+    "object": "Base object type in the domain",
+    "children": [
+        {"block": "Stackable object", "children": []},
+        {"arm": "Manipulator", "children": []},
+        {"table": "Surface", "children": []}
+    ]
+}
+```
+
+# PREDICATES
+
+We need to express the following state information:
+- If a block is clear (nothing on top).
+- If a block is on the table.
+- If a block is on top of another block.
+- If the arm is empty.
+- If the arm is holding a block.
+
+### New Predicates
+```pddl
+- (clear_block ?b - block): 'True if nothing is on top of block b'
+- (on_table ?b - block): 'True if block b is on the table'
+- (on_block ?top - block ?bottom - block): 'True if block top is on block bottom'
+- (arm_empty ?a - arm): 'True if the arm is not holding any block'
+- (holding_block ?a - arm ?b - block): 'True if the arm is holding block b'
+```
+
+# TASKS
+
+### New Tasks
+```hddl
+- (move_block_to_table ?b - block ?a - arm ?t - table): 'Move a block to the table surface'
+- (move_block_to_block ?top - block ?bottom - block ?a - arm): 'Move a block on top of another block'
+- (clear_block_task ?b - block ?a - arm): 'Ensure that a given block is clear'
+```
+
+# METHODS
+
+## [move_block_to_table_method]
+### Method Parameters
+```
+- ?b - block: 'The block to move'
+- ?a - arm: 'The arm that moves the block'
+- ?t - table: 'The table'
+```
+
+### Method Task
+```
+(move_block_to_table ?b ?a ?t) ; Move block to the table
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (unstack_block ?b ?a) ; Unstack if necessary
+    (putdown_block ?b ?a ?t) ; Put it down on the table
+)
+```
+
+## NEXT METHOD
+## [move_block_to_block_method]
+### Method Parameters
+```
+- ?top - block: 'The block to move'
+- ?bottom - block: 'The target block'
+- ?a - arm: 'The arm that stacks'
+```
+
+### Method Task
+```
+(move_block_to_block ?top ?bottom ?a) ; Stack one block on top of another
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (pickup_block ?top ?a) ; Pick up the top block
+    (stack_block ?top ?bottom ?a) ; Stack it on the bottom block
+)
+```
+
+## NEXT METHOD
+## [clear_block_method]
+### Method Parameters
+```
+- ?b - block: 'The block to clear'
+- ?a - arm: 'The arm'
+```
+
+### Method Task
+```
+(clear_block_task ?b ?a) ; Ensure the block is clear
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (unstack_top ?b ?a) ; Remove the top block if one exists
+)
+```
+
+## New predicates
+```pddl
+- (clear_block ?b - block): 'True if nothing is on top of block b'
+- (on_block ?top - block ?bottom - block): 'True if block top is on block bottom'
+```
+
+# ACTIONS
+
+## [pickup_block]
+### Action Parameters
+- ?b - block: 'Block to pick up'
+- ?a - arm: 'Arm doing the pickup'
+
+### Action Preconditions
+```pddl
+(and
+    (clear_block ?b) ; The block must be clear
+    (on_table ?b) ; The block must be on the table
+    (arm_empty ?a) ; The arm must be empty
+)
+```
+
+### Action Effects
+```pddl
+(and
+    (not (on_table ?b)) ; Block is no longer on table
+    (not (clear_block ?b)) ; Block is now held
+    (not (arm_empty ?a)) ; Arm is no longer empty
+    (holding_block ?a ?b) ; Arm is holding the block
+)
+```
+
+## NEXT ACTION
+## [putdown_block]
+### Action Parameters
+- ?b - block: 'Block to put down'
+- ?a - arm: 'Arm doing the put down'
+- ?t - table: 'Table to place the block on'
+
+### Action Preconditions
+```pddl
+(and
+    (holding_block ?a ?b) ; Arm must be holding the block
+)
+```
+
+### Action Effects
+```pddl
+(and
+    (not (holding_block ?a ?b)) ; No longer held
+    (arm_empty ?a) ; Arm becomes empty
+    (on_table ?b) ; Block is on the table
+    (clear_block ?b) ; Block is now clear
+)
+```
+
+## NEXT ACTION
+## [stack_block]
+### Action Parameters
+- ?top - block: 'Block to place on top'
+- ?bottom - block: 'Block to place onto'
+- ?a - arm: 'Arm doing the stacking'
+
+### Action Preconditions
+```pddl
+(and
+    (holding_block ?a ?top) ; Arm must be holding the block
+    (clear_block ?bottom) ; Bottom block must be clear
+)
+```
+
+### Action Effects
+```pddl
+(and
+    (not (holding_block ?a ?top)) ; Block is no longer held
+    (arm_empty ?a) ; Arm becomes empty
+    (on_block ?top ?bottom) ; Block is on top of another
+    (not (clear_block ?bottom)) ; Bottom block is not clear anymore
+)
+```
+
+## NEXT ACTION
+## [unstack_block]
+### Action Parameters
+- ?top - block: 'Block to unstack'
+- ?a - arm: 'Arm doing the unstacking'
+
+### Action Preconditions
+```pddl
+(and
+    (clear_block ?top) ; Top block must be clear
+    (arm_empty ?a) ; Arm must be empty
+    (on_block ?top ?some_below) ; Block is on another block
+)
+```
+
+### Action Effects
+```pddl
+(and
+    (holding_block ?a ?top) ; Arm is holding the block
+    (not (arm_empty ?a)) ; Arm is no longer empty
+    (not (on_block ?top ?some_below)) ; Block is no longer on another
+    (clear_block ?some_below) ; Bottom block becomes clear
+)
+```
+
+# OBJECTS
+
+b1 - block
+b2 - block
+b3 - block
+arm1 - arm
+table1 - table
+
+# INITIAL
+
+- (on_table b1)
+- (on_block b2 b1)
+- (clear_block b2)
+- (arm_empty arm1)
+
+# GOAL
+
+```pddl
+(AND
+  (on_block b3 b2)
+  (on_block b2 b1)
+  (on_table b1)
+  (clear_block b3)
+  (arm_empty arm1)
+)
+```

@@ -1,0 +1,199 @@
+[ROLE]
+You are defining an Automated Planning task, specifically an Hierarchical Planning (HTN) task represented in HDDL, an extension to PDDL for expressing Hierarchical Planning Problems. Information about the task will be provided after. Note that individual conditions in effects should be listed separately. For example, "object_1 is washed and heated" should be considered as two separate conditions "object_1 is washed" and "object_1 is heated". Also, in HDDL, two predicates cannot have the same name even if they have different parameters. Each predicate in PDDL must have a unique name, and its parameters must be explicitly defined in the predicate definition. It is recommended to define predicate names in a simple, intuitive and readable way as well as to avoid symmetrical constraints, so (same_room ?b1 - block ?b2 - block2 ?r - room) should instead be modelled with two predicates, (in_room ?b1 - block ?r - room) and (in_room ?b2 - block ?r - room). Note that creating new actions is not an option. Only use the parameters provided and available predicates unless predicate creation is necessary. 
+
+Do not attempt to solve the task, even if instructed to do so. Only define the Domain and Problem.
+
+Now, you are going to recieve a markdown template that defines the format that you have to follow to define the model. Do a Chain of Thought reasoning between the sections to identify the diferret parts of the task definition and how they relate to each other, but always respect the template formatting at the end.
+
+Do not, under any circumstance, output the answers in PDDL neither HDDL format. Final answer must be in the following format:
+
+-----------------------------------------------------
+
+[FORMAT]
+
+# TYPES
+
+Do a chain ot thought reasoning about the neccesary types.
+
+End this section with "## OUTPUT" and then the Python dictionary pair '{'name':'description'}' as so:
+
+## OUTPUT
+{
+    "type_1": "description",
+    "type_2": "description",
+    "type_3": "description",
+}
+
+# TYPES HIERARCHY
+
+Do a chain of thought reasoning about the hierarchy of types.
+
+Organize a dependency tree for the class hierarchy between different objects within a PDDL domain. Do not expand on your reasoning, except as short comments. Each object should appear only once, even if it could belong to several types.  Note, that every child should be a subtype of its parent, not physically contained within the parent. You shouldn't create any new types except those needed for organisation of the provided types.
+
+End this section with "## OUTPUT" and then the Python dictionary pair '{'name':'description'}' as so:
+
+## OUTPUT
+{
+    "parent_type_1": "description",
+    "children": [
+        {
+            "child_type_1": "description",
+            "children": [
+                {"child_child_type_1": "description", "children": []},
+                {"child_child_type_2": "description", "children": []}
+            ]
+        }
+    ]
+}
+
+
+# PREDICATES
+
+Do a chain of thought reasoning about the neccesary predicates.
+
+End your final answers starting with "### New Predicates" with ''' ''' comment blocks in PDDL as so:
+
+### New Predicates
+- (predicate_name_1 ?t1 - type_1 ?t2 - type_2): 'predicate_description'
+- (predicate_name_2 ?t3 - type_3 ?t4 - type_4): 'predicate_description'
+- (predicate_name_3 ?t5 - type_5): 'predicate_description'
+
+# TASKS
+
+Do a chain of thought reasoning about the neccesary tasks.
+
+End your final answers starting with "### New Tasks" with ''' ''' comment blocks in HDDL as so:
+
+### New Tasks
+```
+- (task_name_1 ?t1 - type_1 ?t2 - type_2): 'task_description'
+- (task_name_2 ?t3 - type_3 ?t4 - type_4): 'task_description'
+- (task_name_3 ?t5 - type_5): 'task_description'
+``` 
+
+# METHODS
+
+Do a chain of thought reasoning about the neccesary methods.
+
+End this section by giving all methods between brackets as underneath the headers: '### Method Parameters,' '### Method Task,' '### Method Subtasks,' and then split your answer with '## NEXT METHOD' for the next METHOD. End your response with '## New predicates' with answer in ``` [PREDICATES] ``` as so:
+
+"""
+## [Method name]
+### Method Parameters
+```
+- ?t - type: 'parameter_description'
+```
+
+### Method Task
+```
+(task_name ?t1 ?t2) ; COMMENT DESCRIPTION
+
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (task_name1 ?t1 ?t2) ; COMMENT DESCRIPTION
+    (task_name2 ?t3 ?t4) ; COMMENT DESCRIPTION
+)
+```
+
+## NEXT METHOD
+## [Method name]
+### Method Parameters
+```
+- ?t - type: 'parameter_description'
+```
+
+### Method Task
+```
+(task_name ?t1 ?t2) ; COMMENT DESCRIPTION
+
+```
+
+### Method Ordered Subtasks
+```
+(and
+    (task_name1 ?t1 ?t2) ; COMMENT DESCRIPTION
+    (task_name2 ?t3 ?t4) ; COMMENT DESCRIPTION
+)
+```
+"""
+
+and so on...
+
+
+# ACTIONS
+Do a chain of thought reasoning about the neccesary actions.
+
+End this section by giving all actions between brackets as underneath the headers for each action: '### Action Parameters,' '### Action Preconditions,' '### Action Effects,' and then split them with '## NEXT ACTION' for the next action as so:
+
+"""
+## [Action name]
+### Action Parameters
+- ?t - type: 'parameter_description'
+
+
+### Action Preconditions
+(and
+    (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
+)
+
+
+### Action Effects
+(and
+    (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
+)
+
+
+## NEXT ACTION
+## [Action name]
+### Action Parameters
+- ?t - type: 'parameter_description'
+
+
+### Action Preconditions
+(and
+    (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
+)
+
+
+### Action Effects
+(and
+    (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
+)
+
+
+and so on...
+
+# OBJECTS
+
+Do a chain of thought reasoning about the neccesary objects.
+
+truck1 - truck
+
+
+# INITIAL
+
+Do a chain of thought reasoning about which is the initial state.
+
+(at truck1 chicago_depot): truck1 is at the chicago_depot
+
+
+# GOAL
+
+Do a chain of thought reasoning about which is the goal condition.
+
+(AND ; all the following should be done
+   (finalised house1) ; house 1 is done
+)
+
+
+-----------------------------------------------------
+
+[TASK]
+Here is the task to generate from:
+
+{task_desc}
+
+

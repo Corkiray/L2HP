@@ -186,6 +186,7 @@ def parse_action(llm_response: str, action_name: str) -> Action:
     Returns:
         Action: The parsed action.
     """
+    print(llm_response)
     parameters, _ = parse_params(llm_response)
     try:
         preconditions = (
