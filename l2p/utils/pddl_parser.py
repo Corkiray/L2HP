@@ -186,7 +186,6 @@ def parse_action(llm_response: str, action_name: str) -> Action:
     Returns:
         Action: The parsed action.
     """
-    print(llm_response)
     parameters, _ = parse_params(llm_response)
     try:
         preconditions = (
@@ -195,6 +194,7 @@ def parse_action(llm_response: str, action_name: str) -> Action:
             .split("```")[1]
             .strip(" `\n")
         )
+        preconditions = substract_logical_expression(preconditions)
     except:
         raise Exception(
             "Could not find the 'Preconditions' section in the output. Provide the entire response, including all headings even if some are unchanged."
@@ -206,6 +206,7 @@ def parse_action(llm_response: str, action_name: str) -> Action:
             .split("```")[1]
             .strip(" `\n")
         )
+        effects = substract_logical_expression(effects)
     except:
         raise Exception(
             "Could not find the 'Effects' section in the output. Provide the entire response, including all headings even if some are unchanged."
@@ -218,7 +219,7 @@ def parse_action(llm_response: str, action_name: str) -> Action:
     }
 
 
-def parse_objects(llm_response: str) -> dict[str, str]:
+def parse_objects(llm_response: str, md_mode: bool = False) -> dict[str, str]:
     """
     Extract objects from LLM response and returns dictionary string pairs object(name, type)
     Args:
@@ -229,7 +230,11 @@ def parse_objects(llm_response: str) -> dict[str, str]:
         - dict[str,str]: objects
     """
 
-    objects_head = extract_heading(llm_response, "OBJECTS")
+    if md_mode:
+        objects_head = extract_section_by_name(llm_response, "OBJECTS")
+    else:
+        objects_head = extract_heading(llm_response, "OBJECTS")
+        
     objects_raw = combine_blocks(objects_head)
 
     objects_clean = clear_comments(
@@ -245,7 +250,7 @@ def parse_objects(llm_response: str) -> dict[str, str]:
     return objects
 
 
-def parse_initial(llm_response: str) -> list[dict[str, str]]:
+def parse_initial(llm_response: str, md_mode: bool = False) -> list[dict[str, str]]:
     """
     Extracts state (PDDL-init) from LLM response and returns it as a list of dict strings
 
@@ -255,7 +260,11 @@ def parse_initial(llm_response: str) -> list[dict[str, str]]:
     Returns:
         states (list[dict[str,str]]): list of initial states in dictionaries
     """
-    state_head = extract_heading(llm_response, "INITIAL")
+    if md_mode:
+        state_head = extract_section_by_name(llm_response, "INITIAL")
+    else:
+        state_head = extract_heading(llm_response, "INITIAL")
+    
     state_raw = combine_blocks(state_head)
     state_clean = clear_comments(state_raw)
 
@@ -279,7 +288,7 @@ def parse_initial(llm_response: str) -> list[dict[str, str]]:
     return states
 
 
-def parse_goal(llm_response: str) -> list[dict[str, str]]:
+def parse_goal(llm_response: str, md_mode: bool = False) -> list[dict[str, str]]:
     """
     Extracts goal (PDDL-goal) from LLM response and returns it as a string
 
@@ -289,14 +298,19 @@ def parse_goal(llm_response: str) -> list[dict[str, str]]:
     Returns:
         states (list[dict[str,str]]): list of goal states in dictionaries
     """
-    goal_head = extract_heading(llm_response, "GOAL")
+    
+    if md_mode:
+        goal_head = extract_section_by_name(llm_response, "GOAL")
+    else:
+        goal_head = extract_heading(llm_response, "GOAL")
 
     if goal_head.count("```") != 2:
         raise ValueError(
             "Could not find exactly one block in the goal section of the LLM output. The goal has to be specified in a single block and as valid PDDL using the `and` and `not` operators. Likely this is caused by a too long response and limited context length. If so, try to shorten the message and exclude objects which aren't needed for the task."
         )
+        
     goal_raw = goal_head.split("```")[1].strip()  # Only a single block in the goal
-    goal_clean = clear_comments(goal_raw)
+    goal_clean = substract_logical_expression(clear_comments(goal_raw))
 
     goal_pure = (
         goal_clean.replace("and", "")
@@ -633,6 +647,7 @@ def parse_method(llm_response: str, method_name: str) -> Method:
             .split("```")[1]
             .strip(" `\n")
         )
+        subtasks = substract_logical_expression(subtasks)
     except:
         raise Exception(
             "Could not find the 'Method Ordered Subtasks' section in the output. Provide the entire response, including all headings even if some are unchanged."
@@ -643,3 +658,40 @@ def parse_method(llm_response: str, method_name: str) -> Method:
         "task": task,
         "ordered_subtasks": subtasks,
     }
+
+def substract_logical_expression(llm_response: str) -> str:
+    """
+    Substracts logical expression from LLM response and returns it as a string
+
+    Args:
+        llm_response (str): The LLM output.
+
+    Returns:
+        states (list[dict[str,str]]): list of initial states in dictionaries
+    """
+    # Find all substrings enclosed by parentheses
+    matches = re.findall(r'\((.*)\)', llm_response, re.DOTALL)
+
+    # Return the largest match or an empty string if no matches
+    if matches:
+        return f"({max(matches, key=len)})"
+    else:
+        raise ValueError("Could not find the logical expression in the LLM output. Provide the entire response, including all headings even if some are unchanged.")
+
+def extract_section_by_name(markdown_text, title, level="#"):
+    """
+    Extracts the content of a specific section in markdown text based on the title and level.
+
+    Args:
+        markdown_text (str): The raw markdown text.
+        title (str): The title of the section to extract.
+        level (str): The markdown level of the title (e.g., "#", "##", "###").
+
+    Returns:
+        str: The content of the section, or None if the section is not found.
+    """
+    pattern = rf"(?:^|\n){level} {re.escape(title)}\n(.*?)(?=\n{level} |\Z)"
+    match = re.search(pattern, markdown_text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None

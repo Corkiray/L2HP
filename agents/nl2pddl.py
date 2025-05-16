@@ -9,17 +9,27 @@ from l2p.llm_builder import InferenceClient, HUGGING_FACE
 from l2p.main_builder import MainBuilder
 from l2p.utils.pddl_parser import prune_predicates, format_types
 from tests.mock_llm import MockLLM
+from l2p import *
 
 API_KEY = hf_token
-
 REQUIEREMENTS = [":strips", ":typing"]
+PROBLEM_PATH = "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/blocksworld_problem.pddl"
+DOMAIN_PATH = "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/blocksworld_domain.pddl"
+PLAN_PATH = "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/blocksworld_plan.txt"
 
+
+#       Auxiliar Functions
 def load_file(file_path):
     _, ext = os.path.splitext(file_path)
     with open(file_path, 'r') as file:
         if ext == '.json': return json.load(file)
         else: return file.read().strip()
 
+
+
+
+#       Initializations and Loadings
+planner = FastDownward(planner_path="/mnt/homeGPU/ipuerta/l2p-htn/downward/downward/fast-downward.py")  # FastDownward planner
 builder = MainBuilder("bloques", "bloques_problem")
 builder.requirements = REQUIEREMENTS
 
@@ -27,17 +37,21 @@ builder.requirements = REQUIEREMENTS
 #     provider="nebius", api_key=hf_token, max_tokens=500)
 
 # model = HUGGING_FACE(model_path="Qwen/Qwen2.5-7B-Instruct-1M")
-model = MockLLM(
-    [
+model = MockLLM([
         load_file(
-            "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/llm_output.txt"
+            "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/llm_output_pddl.txt"
         )
     ]
 )
 
 # load in assumptions
 domain_desc = load_file(r'tests/usage/prompts/domain/blocksworld_domain.txt')
-extract_pddl_domain_and_problem_prompt = load_file(r'tests/usage/prompts/main_builder/extract_pddl_domain_and_problem.txt')
+extract_pddl_domain_and_problem_prompt = load_file(r'templates/model_templates/extract_pddl_model.txt')
+
+
+
+
+#       Execution
 
 # extract predicates via LLM
 output_list = builder.extract_domain_and_problem(
@@ -49,6 +63,19 @@ output_list = builder.extract_domain_and_problem(
 # for element in output_list[:-1]:
 #     print(f"Element type: {type(element)}")
 #     print(element)
-    
-print(builder.get_domain())
-print(builder.get_problem())
+# print(builder.get_domain())
+# print(builder.get_problem())
+
+# Save the domain and problem to files
+with open(DOMAIN_PATH, "w") as file:
+    file.write(builder.get_domain())
+with open(PROBLEM_PATH, "w") as file:
+    file.write(builder.get_problem())
+
+# Run planner
+plan_name = "plan_" + builder.domain_name + "_" + builder.problem_name + ".txt"
+_, output = planner.run_fast_downward(domain_file=DOMAIN_PATH, problem_file=PROBLEM_PATH)
+
+# Write generated plan into folder
+with open(PLAN_PATH, "w") as file:
+    file.write(output)

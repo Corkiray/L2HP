@@ -72,10 +72,11 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                 # print(llm_response)
 
                 # extract respective types from response
-                types_fragment = llm_response.split("# TYPES")[1].split("\n# ")[0].split("\n## OUTPUT")[1]
-                types = convert_to_dict(llm_response=types_fragment)
-                types_hierarchy_fragment = llm_response.split("# TYPES HIERARCHY")[1].split("\n# ")[0].split("\n## OUTPUT")[1]
-                type_hierarchy = convert_to_dict(llm_response=types_hierarchy_fragment)
+                raw_types = extract_section_by_name(llm_response, "TYPES").split("\n## OUTPUT")[1]
+                types = convert_to_dict(llm_response=raw_types)
+                
+                raw_types_hierarchy = extract_section_by_name(llm_response, "TYPES HIERARCHY").split("\n## OUTPUT")[1]
+                type_hierarchy = convert_to_dict(llm_response=raw_types_hierarchy)
                 
                 # extract respective types predicates and tasks from response
                 predicates = parse_new_predicates(llm_response)
@@ -84,7 +85,7 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                     tasks = parse_tasks(llm_response)
                         
                 # extract respective actions from response
-                raw_actions = llm_response.split("\n# ACTIONS")[1].split("\n## NEXT ACTION")
+                raw_actions = extract_section_by_name(llm_response, "ACTIONS").split("\n## NEXT ACTION")
                 actions = []
                 for i in raw_actions:
                     # define the regex patterns
@@ -105,7 +106,7 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                     
                 if self.isHTN:
                     # extract respective methods from response
-                    raw_methods = llm_response.split("## NEXT METHOD")
+                    raw_methods = extract_section_by_name(llm_response, "METHODS").split("## NEXT METHOD")
                     methods = []
                     for i in raw_methods:
                         # define the regex patterns
@@ -120,16 +121,14 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                         rest_match = rest_of_string_pattern.search(i)
                         rest_of_string = rest_match.group(2).strip() if rest_match else None
 
-                        methods.append(
-                            parse_method(llm_response=rest_of_string, method_name=name)
-                        )
+                        method = parse_method(llm_response=rest_of_string, method_name=name)
+                        methods.append(method)
                             
                 # extract respective Problem types from response
-                print(llm_response)
-                objects = parse_objects(llm_response)
-                initial = parse_initial(llm_response)
-                goal = parse_goal(llm_response)
-
+                objects = parse_objects(llm_response, md_mode=True)
+                initial = parse_initial(llm_response, md_mode=True)
+                goal = parse_goal(llm_response, md_mode=True)
+                
                 self.types = types
                 self.type_hierarchy = type_hierarchy
                 self.predicates = predicates
@@ -137,7 +136,6 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                 self.objects = objects
                 self.initial = initial
                 self.goal = goal
-                
                 if self.isHTN:
                     self.tasks = tasks
                     self.methods = methods
@@ -165,12 +163,13 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         desc = f"(:task {task['name']}\n"
         desc += f"   :parameters (\n{indent(string=param_str, level=2)}\n   )\n"
         desc += ")"
+        return desc
             
     def tasks_descs(self, tasks) -> str:
         """Helper function to combine all task descriptions"""
         desc = ""
         for task in tasks:
-            desc += "\n\n" + indent(self.method_desc(task), level=1)
+            desc += "\n\n" + indent(self.task_desc(task), level=1)
         return desc
     
     def method_desc(self, method: Method) -> str:
@@ -254,7 +253,6 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         initial_state_str = self.format_initial(self.initial)
         goal_state_str = self.format_goal(self.goal)
 
-        # print(object_str)
         # generate proper PDDL structure
         desc = self.generate_task(
             self.domain_name,

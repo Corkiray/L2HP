@@ -231,20 +231,21 @@ We need to express the following state information:
 ```
 
 # OBJECTS
-
+```
 b1 - block
 b2 - block
 b3 - block
 arm1 - arm
 table1 - table
+```
 
 # INITIAL
-
+```
 - (on_table b1)
 - (on_block b2 b1)
 - (clear_block b2)
 - (arm_empty arm1)
-
+```
 # GOAL
 
 ```pddl
