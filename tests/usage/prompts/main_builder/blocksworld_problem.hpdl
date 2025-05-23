@@ -3,7 +3,11 @@
    (:domain bloques)
 
    (:objects 
-      
+      blue - block
+      yellow - block
+      red - block
+      green - block
+      grip - gripper
    )
 
    (:init
@@ -13,7 +17,7 @@
       (on_table green)
       (clear blue)
       (clear green)
-      (empty_hand )
+      (empty grip)
    )
 
    (:goal

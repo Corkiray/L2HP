@@ -4,7 +4,7 @@ This file contains collection of functions for extracting/parsing information fr
 
 from pddl.formatter import domain_to_string, problem_to_string
 from pddl import parse_domain, parse_problem
-from .pddl_types import Action, Predicate, Task, Method
+from .pddl_types import Action, Predicate, HPDLTask, HPDLMethod
 from collections import OrderedDict
 from copy import deepcopy
 import re, ast, json, sys, os
@@ -42,13 +42,15 @@ def parse_params(llm_output):
     )[0]
     params_str = combine_blocks(params_heading)
     params_raw = []
+
     for line in params_str.split("\n"):
-        if line.strip() == "" or ("." not in line and not line.strip().startswith("-")):
+        if line.strip() == "" or ("." not in line and not
+            (line.strip().startswith("-") or line.strip().startswith("*"))):
             print(
                 f"[WARNING] checking param object types - empty line or not a valid line: '{line}'"
             )
             continue
-        if not (line.split(".")[0].strip().isdigit() or line.startswith("-")):
+        if not (line.split(".")[0].strip().isdigit() or line.startswith("-") or line.startswith("*")):
             print(f"[WARNING] checking param object types - not a valid line: '{line}'")
             continue
         try:
@@ -59,6 +61,7 @@ def parse_params(llm_output):
         except Exception:
             print(f"[WARNING] checking param object types - fail to parse: {line}")
             break
+
     return params_info, params_raw
 
 def parse_new_predicates(llm_output) -> list[Predicate]:
@@ -231,7 +234,7 @@ def parse_objects(llm_response: str, md_mode: bool = False) -> dict[str, str]:
     """
 
     if md_mode:
-        objects_head = extract_section_by_name(llm_response, "OBJECTS")
+        objects_head = llm_response
     else:
         objects_head = extract_heading(llm_response, "OBJECTS")
         
@@ -261,7 +264,7 @@ def parse_initial(llm_response: str, md_mode: bool = False) -> list[dict[str, st
         states (list[dict[str,str]]): list of initial states in dictionaries
     """
     if md_mode:
-        state_head = extract_section_by_name(llm_response, "INITIAL")
+        state_head = llm_response
     else:
         state_head = extract_heading(llm_response, "INITIAL")
     
@@ -300,7 +303,7 @@ def parse_goal(llm_response: str, md_mode: bool = False) -> list[dict[str, str]]
     """
     
     if md_mode:
-        goal_head = extract_section_by_name(llm_response, "GOAL")
+        goal_head = llm_response
     else:
         goal_head = extract_heading(llm_response, "GOAL")
 
@@ -444,12 +447,14 @@ def combine_blocks(heading_str: str):
     """Combine the inside of blocks from the heading string into a single string."""
 
     possible_blocks = heading_str.split("```")
-    blocks = [
-        possible_blocks[i] for i in range(1, len(possible_blocks), 2)
-    ]  # obtain string between ```
-
+    if len(possible_blocks) > 1:
+        blocks = [
+            possible_blocks[i] for i in range(1, len(possible_blocks), 2)
+        ]  # obtain string between ```
+    else:
+        blocks = possible_blocks
+    
     combined = "\n".join(blocks)
-
     return combined.replace(
         "\n\n", "\n"
     ).strip()  # remove leading/trailing whitespace and internal empty lines
@@ -528,7 +533,7 @@ def check_parse_problem(file_path: str):
 
 # ------------------- HTN Functions -------------------- #
 
-def parse_tasks(llm_response: str) -> list[Task]:
+def parse_tasks(llm_response: str) -> dict[str, HPDLTask]:
     """
     Extracts HTN Tasks from LLM response and returns it as a list of dict strings
 
@@ -538,25 +543,16 @@ def parse_tasks(llm_response: str) -> list[Task]:
     Returns:
         list[task]): list of tasks
     """
-    new_tasks = list()
-    try:
-        tasks_heading = (
-            llm_response.split("New Tasks\n")[1].strip().split("###")[0]
-        )
-    except:
-        raise Exception(
-            "Could not find the 'New Tasks' section in the output. Provide the entire response, including all headings even if some are unchanged."
-        )
-    tasks_output = combine_blocks(tasks_heading)
+    new_tasks = dict()
 
-    for p_line in tasks_output.split("\n"):
+    for p_line in llm_response.split("\n"):
         if ("." not in p_line or not p_line.split(".")[0].strip().isdigit()) and not (
-            p_line.startswith("-") or p_line.startswith("(")
+            p_line.startswith("-") or p_line.startswith("(") or p_line.startswith("*")
         ):
             if len(p_line.strip()) > 0:
                 print(f'[WARNING] unable to parse the line: "{p_line}"')
             continue
-        task_info = p_line.split(": ")[0].strip(" 1234567890.(-)`").split(" ")
+        task_info = p_line.split(": ")[0].strip(" 1234567890.(-*)`").split(" ")
         task_name = task_info[0]
         task_desc = p_line.split(": ")[1].strip() if ": " in p_line else ""
 
@@ -605,19 +601,18 @@ def parse_tasks(llm_response: str) -> list[Task]:
 
         # drop the index/dot
         p_line = p_line.strip(" 1234567890.-`")
-        new_tasks.append(
-            {
-                "name": task_name,
-                "desc": task_desc,
-                "raw": p_line,
-                "params": params,
-                "clean": clean,
-            }
-        )
+        new_tasks[task_name] = {
+            "name": task_name,
+            "desc": task_desc,
+            "raw": p_line,
+            "params": params,
+            "clean": clean,
+        }
+        
      
     return new_tasks
 
-def parse_method(llm_response: str, method_name: str) -> Method:
+def parse_method(llm_response: str, method_name: str) -> HPDLMethod:
     """
     Parse a method from a given LLM output.
 
@@ -633,7 +628,6 @@ def parse_method(llm_response: str, method_name: str) -> Method:
         task = (
             llm_response.split("Method Task\n")[1]
             .split("###")[0]
-            .split("```")[1]
             .strip(" `\n")
         )
     except:
@@ -656,7 +650,7 @@ def parse_method(llm_response: str, method_name: str) -> Method:
         "name": method_name,
         "params": parameters,
         "task": task,
-        "ordered_subtasks": subtasks,
+        "tasks": subtasks,
     }
 
 def substract_logical_expression(llm_response: str) -> str:
@@ -678,20 +672,97 @@ def substract_logical_expression(llm_response: str) -> str:
     else:
         raise ValueError("Could not find the logical expression in the LLM output. Provide the entire response, including all headings even if some are unchanged.")
 
-def extract_section_by_name(markdown_text, title, level="#"):
+def extract_section_by_name(markdown_text, title, level=1):
     """
     Extracts the content of a specific section in markdown text based on the title and level.
 
     Args:
         markdown_text (str): The raw markdown text.
         title (str): The title of the section to extract.
-        level (str): The markdown level of the title (e.g., "#", "##", "###").
+        level (str): The markdown level of the title (e.g., 1="#", 2="##", 3="###").
 
     Returns:
         str: The content of the section, or None if the section is not found.
     """
-    pattern = rf"(?:^|\n){level} {re.escape(title)}\n(.*?)(?=\n{level} |\Z)"
+    pattern = rf"(?:^|\n){level*'#'} {re.escape(title)}\n(.*?)(?=\n{level*'#'} |\Z)"
     match = re.search(pattern, markdown_text, re.DOTALL)
     if match:
         return match.group(1).strip()
     return None
+
+
+def parse_list_of_predicates(llm_output) -> list[Predicate]:
+    """
+    Parses new predicates from LLM into Python format.
+
+    The LLM Output provided has to contain a structured list of items.
+    """
+    new_predicates = list()
+
+    for p_line in llm_output.split("\n"):
+        if ("." not in p_line or not p_line.split(".")[0].strip().isdigit()) and not (
+            p_line.startswith("-") or p_line.startswith("(") or p_line.startswith("*")
+        ):
+            if len(p_line.strip()) > 0:
+                print(f'[WARNING] unable to parse the line: "{p_line}"')
+            continue
+        predicate_info = p_line.split(": ")[0].strip(" 1234567890.(-*)`").split(" ")
+        predicate_name = predicate_info[0]
+        predicate_desc = p_line.split(": ")[1].strip() if ": " in p_line else ""
+
+        # get the predicate type info
+        if len(predicate_info) > 1:
+            predicate_type_info = predicate_info[1:]
+            predicate_type_info = [
+                l.strip(" ()`") for l in predicate_type_info if l.strip(" ()`")
+            ]
+        else:
+            predicate_type_info = []
+        params = OrderedDict()
+        next_is_type = False
+        upcoming_params = []
+
+        for p in predicate_type_info:
+            if next_is_type:
+                if p.startswith("?"):
+                    print(
+                        f"[WARNING] `{p}` is not a valid type for a variable, but it is being treated as one. Should be checked by syntax check later."
+                    )
+                for up in upcoming_params:
+                    params[up] = p
+                next_is_type = False
+                upcoming_params = []
+            elif p == "-":
+                next_is_type = True
+            elif p.startswith("?"):
+                upcoming_params.append(p)  # the next type will be for this variable
+            else:
+                print(
+                    f"[WARNING] `{p}` is not corrrectly formatted. Assuming it's a variable name."
+                )
+                upcoming_params.append(f"?{p}")
+        if next_is_type:
+            print(
+                f"[WARNING] The last type is not specified for `{p_line}`. Undefined are discarded."
+            )
+        if len(upcoming_params) > 0:
+            print(
+                f"[WARNING] The last {len(upcoming_params)} is not followed by a type name for {upcoming_params}. These are discarded"
+            )
+
+        # generate a clean version of the predicate
+        clean = f"({predicate_name} {' '.join([f'{k} - {v}' for k, v in params.items()])}): {predicate_desc}"
+
+        # drop the index/dot
+        p_line = p_line.strip(" 1234567890.-`")
+        new_predicates.append(
+            {
+                "name": predicate_name,
+                "desc": predicate_desc,
+                "raw": p_line,
+                "params": params,
+                "clean": clean,
+            }
+        )
+
+    return new_predicates

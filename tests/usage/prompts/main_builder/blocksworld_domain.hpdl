@@ -1,0 +1,119 @@
+(define (domain bloques)
+   (:requirements
+      :strips :typing)
+
+   (:types 
+      object
+      block - object
+      gripper - object
+      surface - object
+      block - surface
+      table - surface
+   )
+
+   (:predicates 
+      (empty ?g - gripper) ;  'True if the gripper is not holding anything'
+      (clear ?b - block) ;  'True if the top of the block is unoccupied'
+      (on\_table ?b - block) ;  'True if the block is on the table'
+      (on ?b1 - block ?b2 - block) ;  'True if b1 is on top of b2'
+      (holding ?g - gripper ?b - block) ;  'True if the gripper is holding block b'
+   )
+
+   (:task achieve\_on
+      :parameters (
+         ?top - block
+         ?bottom - block
+      )
+      
+   
+      (:method achieve\_on\_direct
+         :tasks
+            (and
+                (ensure_clear ?bottom) ; Make sure bottom is clear
+                (pickup_block ?top ?g) ; Pick up the top block
+                (stack_block ?top ?bottom ?g) ; Stack the block
+            )
+      )
+   )
+
+   (:action pickup
+      :parameters (
+         ?b - block
+         ?g - gripper
+      )
+      :precondition
+         (and
+             (on_table ?b) ; Block is on the table
+             (clear ?b) ; Nothing on top
+             (empty ?g) ; Gripper is empty
+         )
+      :effect
+         (and
+             (holding ?g ?b) ; Gripper now holds the block
+             (not (on_table ?b)) ; Block is no longer on table
+             (not (clear ?b)) ; Block is not clear anymore
+             (not (empty ?g)) ; Gripper is no longer empty
+         )
+   )
+
+   (:action putdown
+      :parameters (
+         ?b - block
+         ?g - gripper
+      )
+      :precondition
+         (and
+             (holding ?g ?b)
+         )
+      :effect
+         (and
+             (on_table ?b)
+             (clear ?b)
+             (empty ?g)
+             (not (holding ?g ?b))
+         )
+   )
+
+   (:action stack
+      :parameters (
+         ?top - block
+         ?bottom - block
+         ?g - gripper
+      )
+      :precondition
+         (and
+             (holding ?g ?top)
+             (clear ?bottom)
+         )
+      :effect
+         (and
+             (on ?top ?bottom)
+             (empty ?g)
+             (not (holding ?g ?top))
+             (not (clear ?bottom))
+             (clear ?top)
+         )
+   )
+
+   (:action unstack
+      :parameters (
+         ?top - block
+         ?bottom - block
+         ?g - gripper
+      )
+      :precondition
+         (and
+             (on ?top ?bottom)
+             (clear ?top)
+             (empty ?g)
+         )
+      :effect
+         (and
+             (holding ?g ?top)
+             (clear ?bottom)
+             (not (on ?top ?bottom))
+             (not (empty ?g))
+             (not (clear ?top))
+         )
+   )
+)

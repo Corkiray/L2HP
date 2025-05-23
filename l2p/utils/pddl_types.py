@@ -59,17 +59,32 @@ class PlanDetails:
 
 
 # HTN Types data classes
-class Task(TypedDict):
+class HDDLTask(TypedDict):
     name: str
     desc: Optional[str]
     raw: str
     params: ParameterList
     clean: str
 
-class Method(TypedDict):
+class HDDLMethod(TypedDict):
     name: str
     params: ParameterList
     desc: Optional[str]
     raw: str
-    task: Task
+    task: HDDLTask
     ordered_subtasks: str
+        
+class HPDLMethod(TypedDict):
+    name: str
+    params: ParameterList
+    desc: Optional[str]
+    raw: str
+    ordered_subtasks: str
+    
+class HPDLTask(TypedDict):
+    name: str
+    desc: Optional[str]
+    raw: str
+    params: ParameterList
+    clean: str
+    methods: list[HPDLMethod]

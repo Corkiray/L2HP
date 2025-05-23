@@ -1,97 +1,109 @@
-(define (domain BLOCKS)
+(define (domain bloques)
+   (:requirements
+      :strips :typing)
 
-(:requirements :negative-preconditions
-  	:hierarchy
-	:typing
-	:method-preconditions
-)
+   (:types 
+      entity
+      block - entity
+      arm - entity
+      surface - entity
+      table - surface
+   )
 
-(:types block)
+   (:predicates 
+      (on ?b1 - block ?b2 - block) ;  'block ?b1 is on block ?b2'
+      (on\_table ?b - block) ;  'block ?b is on the table'
+      (clear ?b - block) ;  'block ?b has nothing on top'
+      (holding ?b - block) ;  'the robot arm is holding block ?b'
+      (empty\_hand ) ;  'the robot arm is empty'
+   )
 
-(:predicates (on ?x - block ?y - block) (ontable ?x - block) (clear ?x - block) (handempty) (holding ?x - block))
+   (:action pick\_block
+      :parameters (
+         
+      )
+      :precondition
+         (and
+             (clear ?b) ; block is clear
+             (on_table ?b) ; block is on table
+             (empty_hand) ; arm is empty
+         )
+      :effect
+         (and
+             (not (on_table ?b)) ; no longer on table
+             (not (clear ?b)) ; not clear while held
+             (not (empty_hand)) ; hand now full
+             (holding ?b) ; arm holding block
+         )
+   )
 
-(:task do_put_on
-  :parameters (?x - block ?y - block) )
+   (:action put\_block
+      :parameters (
+         
+      )
+      :precondition
+         (and
+             (holding ?b) ; holding the block
+         )
+      :effect
+         (and
+             (not (holding ?b)) ; no longer holding
+             (on_table ?b) ; block on table
+             (clear ?b) ; becomes clear
+             (empty_hand) ; hand becomes empty
+         )
+   )
 
-(:task do_on_table
-  :parameters (?x - block) )
+   (:action stack\_block
+      :parameters (
+         
+      )
+      :precondition
+         (and
+             (holding ?b1) ; block to stack is held
+             (clear ?b2) ; target block is clear
+         )
+      :effect
+         (and
+             (not (holding ?b1)) ; no longer held
+             (not (clear ?b2)) ; now has something on it
+             (on ?b1 ?b2) ; stacked
+             (clear ?b1) ; new top block
+             (empty_hand) ; arm is empty again
+         )
+   )
 
-(:task do_move
-  :parameters (?x - block ?y - block) )
+   (:action unstack\_block
+      :parameters (
+         
+      )
+      :precondition
+         (and
+             (on ?b1 ?b2) ; stacked on another
+             (clear ?b1) ; nothing on top
+             (empty_hand) ; hand free
+         )
+      :effect
+         (and
+             (not (on ?b1 ?b2)) ; not stacked anymore
+             (not (clear ?b1)) ; held, not clear
+             (not (empty_hand)) ; hand full
+             (clear ?b2) ; exposed
+             (holding ?b1) ; now held
+         )
+   )
 
-(:task do_clear
-  :parameters (?x - block) )
-
-(:method m0_do_put_on
-  :parameters ( ?x - block  ?y - block )
-  :task (do_put_on ?x ?y)
-  :precondition (and (on ?x ?y))
-  :ordered-subtasks(and (t1 (nop))) ) 
-
-(:method m1_do_put_on
-  :parameters ( ?x - block  ?y - block )
-  :task (do_put_on ?x ?y)
-  :precondition (and (handempty))
-  :ordered-subtasks(and (t1 (do_clear ?x)) (t2 (do_clear ?y)) (t3 (do_on_table ?y)) (t4 (do_move ?x ?y))) ) 
-
-(:method m2_do_on_table
-  :parameters ( ?x - block ?y - block )
-  :task (do_on_table ?x)
-  :precondition (and (clear ?x) (handempty) (not (ontable ?x)))
-  :ordered-subtasks(and (t1 (unstack ?x ?y)) (t2 (put-down ?x))) ) 
-
-(:method m3_do_on_table
-  :parameters ( ?x - block )
-  :task (do_on_table ?x)
-  :precondition (and (clear ?x))
-  :ordered-subtasks(and (t1 (nop))) ) 
-
-(:method m4_do_move
-  :parameters ( ?x - block  ?y - block )
-  :task (do_move ?x ?y)
-  :precondition (and (clear ?x) (clear ?y) (handempty) (ontable ?x))
-  :ordered-subtasks(and (t1 (pick-up ?x)) (t2 (stack ?x ?y))) ) 
-
-(:method m5_do_move
-  :parameters ( ?x - block  ?y - block ?z - block )
-  :task (do_move ?x ?y)
-  :precondition (and (clear ?x) (clear ?y) (handempty) (not (ontable ?x)))
-  :ordered-subtasks(and (t1 (unstack ?x ?z)) (t2 (stack ?x ?y))) ) 
-
-(:method m6_do_clear
-  :parameters ( ?x - block )
-  :task (do_clear ?x)
-  :precondition (and (clear ?x))
-  :ordered-subtasks(and (t1 (nop))) ) 
-
-(:method m7_do_clear
-  :parameters ( ?x - block ?y - block )
-  :task (do_clear ?x)
-  :precondition (and (not (clear ?x)) (on ?y ?x) (handempty))
-  :ordered-subtasks(and (t1 (do_clear ?y)) (t2 (unstack ?y ?x)) (t3 (put-down ?y))) ) 
-
-(:action pick-up
-  :parameters (?x - block)
-  :precondition (and (clear ?x) (ontable ?x) (handempty))
-  :effect (and (not (ontable ?x)) (not (clear ?x)) (not (handempty)) (holding ?x)))
-
-(:action put-down
-  :parameters (?x - block)
-  :precondition (holding ?x)
-  :effect (and (not (holding ?x)) (clear ?x) (handempty) (ontable ?x)))
-
-(:action stack
-  :parameters (?x - block ?y - block)
-  :precondition (and (holding ?x) (clear ?y))
-  :effect (and (not (holding ?x)) (not (clear ?y)) (clear ?x) (handempty) (on ?x ?y)))
-
-(:action unstack
-  :parameters (?x - block ?y - block)
-  :precondition (and (on ?x ?y) (clear ?x) (handempty))
-  :effect (and (holding ?x) (clear ?y) (not (clear ?x)) (not (handempty)) (not (on ?x ?y))))
-
-(:action nop
-  :parameters ()
-  :precondition ()
-  :effect ())
+   (:action clear\_block
+      :parameters (
+         
+      )
+      :precondition
+         (and
+             (not (clear ?b)) ; must not already be clear
+         )
+      :effect
+         (and
+             (clear ?b) ; make clear — abstract action, decomposed in HTN
+         )
+   )
 )

@@ -176,3 +176,6 @@ sas_plan
 #secrets
 mySecrets.py
 
+# Planners
+downward/
+pandaPIparser/

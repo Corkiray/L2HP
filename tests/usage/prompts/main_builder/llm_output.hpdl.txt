@@ -1,0 +1,358 @@
+# TYPES
+
+We are modeling a robotic manipulation domain with blocks and a robotic arm. At the top level, we can define a generic `object` type. From this, we derive more specific types: `block`, for stackable objects, and `gripper`, which refers to the robotic arm capable of holding a single block. A `surface` type can also be useful to generalize where a block can be placed — either on the `table` or another `block`.
+
+## OUTPUT
+
+{
+"object": "Generic object in the domain",
+"children": [
+{
+"block": "A stackable block",
+"children": []
+},
+{
+"gripper": "The robotic arm that holds blocks",
+"children": []
+},
+{
+"surface": "A surface where a block can be placed",
+"children": [
+{"block": "A block used as a surface for stacking", "children": []},
+{"table": "The table surface", "children": []}
+]
+}
+]
+}
+
+# PREDICATES
+
+We need predicates to represent key world properties:
+
+* Whether the gripper is empty.
+* Whether a block is clear (i.e., nothing on top).
+* Whether a block is on the table.
+* Whether a block is on another block.
+* Whether the gripper is holding a specific block.
+
+Note: Predicate names must be unique, so we avoid naming conflicts.
+
+## OUTPUT
+
+* (empty ?g - gripper): 'True if the gripper is not holding anything'
+* (clear ?b - block): 'True if the top of the block is unoccupied'
+* (on\_table ?b - block): 'True if the block is on the table'
+* (on ?b1 - block ?b2 - block): 'True if b1 is on top of b2'
+* (holding ?g - gripper ?b - block): 'True if the gripper is holding block b'
+
+# TASKS
+
+There is a single high-level task: to arrange blocks such that one is on top of another (e.g., red on green). This can be decomposed into subtasks involving unstacking, picking up, putting down, and stacking operations, depending on the initial configuration.
+
+We will define one high-level task `achieve_on` and decompose it using different methods based on the block states.
+
+## OUTPUT
+
+* (achieve\_on ?top - block ?bottom - block): 'Ensures that top block is on bottom block'
+
+# achieve\_on
+
+This task can be approached in multiple ways. For instance, if the top block is on some other block, it must be unstacked first. If it's on the table, it must be picked up. The bottom block also needs to be clear first.
+
+## achieve\_on\_direct
+
+### Method Parameters
+
+* ?top - block: 'Block to place on top'
+* ?bottom - block: 'Block to place at the bottom'
+* ?g - gripper: 'Robotic arm'
+
+### Method Task
+
+(achieve\_on ?top ?bottom) ; Stack one block on another
+
+### Method Ordered Subtasks
+
+```
+(and
+    (ensure_clear ?bottom) ; Make sure bottom is clear
+    (pickup_block ?top ?g) ; Pick up the top block
+    (stack_block ?top ?bottom ?g) ; Stack the block
+)
+```
+
+# ensure\_clear
+
+This task ensures a block is clear. If it already is, do nothing. Otherwise, unstack what's on top.
+
+## ensure\_clear\_if\_block\_on\_top
+
+### Method Parameters
+
+* ?b - block: 'Block that must be cleared'
+* ?top - block: 'Block on top'
+* ?g - gripper: 'Gripper'
+
+### Method Task
+
+(ensure\_clear ?b) ; Ensure b is clear
+
+### Method Ordered Subtasks
+
+```
+(and
+    (unstack_block ?top ?b ?g) ; Unstack top from b
+    (putdown_block ?top ?g) ; Put it somewhere
+)
+```
+
+# pickup\_block
+
+This task picks up a block, either from the table or from another block.
+
+## pickup\_from\_table
+
+### Method Parameters
+
+* ?b - block: 'Block to pick up'
+* ?g - gripper: 'Gripper'
+
+### Method Task
+
+(pickup\_block ?b ?g) ; Pick up from the table
+
+### Method Ordered Subtasks
+
+```
+(and
+    (pickup ?b ?g) ; Execute pickup action
+)
+```
+
+# stack\_block
+
+This task stacks a block onto another.
+
+## stack\_direct
+
+### Method Parameters
+
+* ?top - block: 'Top block'
+* ?bottom - block: 'Bottom block'
+* ?g - gripper: 'Gripper'
+
+### Method Task
+
+(stack\_block ?top ?bottom ?g) ; Stack top on bottom
+
+### Method Ordered Subtasks
+
+```
+(and
+    (stack ?top ?bottom ?g)
+)
+```
+
+# unstack\_block
+
+This task unpacks a block from on top of another.
+
+## unstack\_direct
+
+### Method Parameters
+
+* ?top - block: 'Block to unstack'
+* ?bottom - block: 'Block beneath'
+* ?g - gripper: 'Gripper'
+
+### Method Task
+
+(unstack\_block ?top ?bottom ?g) ; Remove top from bottom
+
+### Method Ordered Subtasks
+
+```
+(and
+    (unstack ?top ?bottom ?g)
+)
+```
+
+# putdown\_block
+
+This task puts down a block held by the gripper.
+
+## putdown\_direct
+
+### Method Parameters
+
+* ?b - block: 'Block to put down'
+* ?g - gripper: 'Gripper'
+
+### Method Task
+
+(putdown\_block ?b ?g)
+
+### Method Ordered Subtasks
+
+```
+(and
+    (putdown ?b ?g)
+)
+```
+
+# ACTIONS
+
+These are the primitive actions described by the domain. Each corresponds to one of the robot's capabilities.
+
+## pickup
+
+### Action Parameters
+
+* ?b - block: 'Block to pick up'
+* ?g - gripper: 'Gripper'
+
+### Action Preconditions
+
+```
+(and
+    (on_table ?b) ; Block is on the table
+    (clear ?b) ; Nothing on top
+    (empty ?g) ; Gripper is empty
+)
+```
+
+### Action Effects
+
+```
+(and
+    (holding ?g ?b) ; Gripper now holds the block
+    (not (on_table ?b)) ; Block is no longer on table
+    (not (clear ?b)) ; Block is not clear anymore
+    (not (empty ?g)) ; Gripper is no longer empty
+)
+```
+
+## putdown
+
+### Action Parameters
+
+* ?b - block: 'Block to put down'
+* ?g - gripper: 'Gripper'
+
+### Action Preconditions
+
+```
+(and
+    (holding ?g ?b)
+)
+```
+
+### Action Effects
+
+```
+(and
+    (on_table ?b)
+    (clear ?b)
+    (empty ?g)
+    (not (holding ?g ?b))
+)
+```
+
+## stack
+
+### Action Parameters
+
+* ?top - block: 'Block to stack'
+* ?bottom - block: 'Block to be stacked on'
+* ?g - gripper: 'Gripper'
+
+### Action Preconditions
+
+```
+(and
+    (holding ?g ?top)
+    (clear ?bottom)
+)
+```
+
+### Action Effects
+
+```
+(and
+    (on ?top ?bottom)
+    (empty ?g)
+    (not (holding ?g ?top))
+    (not (clear ?bottom))
+    (clear ?top)
+)
+```
+
+## unstack
+
+### Action Parameters
+
+* ?top - block: 'Block on top'
+* ?bottom - block: 'Block beneath'
+* ?g - gripper: 'Gripper'
+
+### Action Preconditions
+
+```
+(and
+    (on ?top ?bottom)
+    (clear ?top)
+    (empty ?g)
+)
+```
+
+### Action Effects
+
+```
+(and
+    (holding ?g ?top)
+    (clear ?bottom)
+    (not (on ?top ?bottom))
+    (not (empty ?g))
+    (not (clear ?top))
+)
+```
+
+# OBJECTS
+
+We need four blocks (blue, red, yellow, green), and one gripper.
+
+## OUTPUT
+
+blue - block
+yellow - block
+red - block
+green - block
+grip - gripper
+
+# INITIAL
+
+Blue is on red, red is on yellow, yellow and green are on the table. All blocks except blue are clear. The gripper is empty.
+
+## OUTPUT
+
+```
+(on blue red): blue is on red
+(on red yellow): red is on yellow
+(on_table yellow): yellow is on table
+(on_table green): green is on table
+(clear blue): nothing on top of blue
+(clear green): nothing on top of green
+(empty grip): gripper is empty
+```
+
+# GOAL
+
+We want the red block to be on the green block.
+
+## OUTPUT
+
+```
+(AND
+   (on red green)
+)
+```
