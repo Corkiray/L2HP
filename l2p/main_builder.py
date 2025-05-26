@@ -38,25 +38,23 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         model: LLM,
         task_desc: str,
         prompt_template: str,
-        max_retries: int = 0,
-    ) -> tuple[dict[str, str], list[dict[str, str]], list[dict[str, str]], str]:
+        max_retries: int = 1,
+    ) -> str:
         """
-        Extracts the domain and problem from a given task descrption, via One-shot LLM
+        Extracts the domain and problem from a given task descrption, via One-shot LLM, and stores the information in the MainBuilder instance atributes.
+        
+        This function uses a prompt template to format the task description and queries the LLM for the domain and problem information.
+        
+        It handles retries in case of extraction failure, allowing for a specified number of attempts to retrieve the information.
+        
+        This function is designed to be used with an LLM that can process the task description and return structured information about the domain and problem.
 
         Args:
             model (LLM): LLM
             task_desc (str): problem description
             prompt_template (str): prompt template class
             max_retries (int): max # of retries if failure occurs
-
         Returns:
-            type_hierarchy (dict[str,str]): dictionary of type hierarchy
-            predicates (list[Predicate]): a list of new predicates
-            tasks ([Task]): list of constructed tasks class with their methods (only if isHTN=True)
-            actions (Action): list of constructed action class
-            objects (dict[str,str]): dictionary of object types {name:description}
-            initial (list[dict[str,str]]): list of dictionary of initial states [{predicate,params,neg}]
-            goal (list[dict[str,str]]): list of dictionary of goal states [{predicate,params,neg}]
             llm_response (str): the raw string LLM response
         """
 
@@ -68,65 +66,50 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         for attempt in range(max_retries):
             try:
                 model.reset_tokens()
-
                 llm_response = model.query(prompt)
-                
-                # print(llm_response)
-
+                               
                 # extract respective types from response
-                raw_types_hierarchy = extract_section_by_name(llm_response, "TYPES").split("\n## OUTPUT")[1]
-                types_hierarchy = convert_to_dict(llm_response=raw_types_hierarchy)
+                raw_types_hierarchy = extract_section_by_name(llm_response, "TYPES")
+                raw_types_hierarchy = extract_section_by_name(raw_types_hierarchy, "OUTPUT", level=2)
+                self.types_hierarchy = convert_to_dict(llm_response=raw_types_hierarchy)
+
                 # extract respective types predicates and tasks from response
-                raw_predicates = extract_section_by_name(llm_response, "PREDICATES").split("\n## OUTPUT")[1]
-                predicates = parse_list_of_predicates(raw_predicates)
+                raw_predicates = extract_section_by_name(llm_response, "PREDICATES")
+                raw_predicates = extract_section_by_name(raw_predicates, "OUTPUT", level=2)
+                self.predicates = parse_list_of_predicates(raw_predicates)
   
                 if self.isHTN:
                     # extract respective tasks and methods from responseç
-                    raw_tasks = extract_section_by_name(llm_response, "TASKS").split("\n## OUTPUT")[1]
-                    tasks = parse_tasks(raw_tasks)
-                    
-                    for task in tasks.items():
+                    raw_tasks = extract_section_by_name(llm_response, "TASKS")
+                    raw_tasks = extract_section_by_name(raw_tasks, "OUTPUT", level=2)
+                    self.tasks = parse_tasks(raw_tasks)
+                    for task in self.tasks.items():
                         task_name = task[0]
-                        methods = list()
                         raw_task_info = extract_section_by_name(llm_response, task_name)
-                        raw_methods_list = raw_task_info.split("\n## ")[1:]
-                        for j in raw_methods_list:
-                            method_name, rest_of_string = j.split("\n", 1)
-                            method = parse_method(llm_response=rest_of_string, method_name=method_name)
-                            methods.append(method)
-                        tasks[task_name]["methods"] = methods
+                        methods = parse_methods(raw_task_info)
+                        self.tasks[task_name]["methods"] = methods
                                              
                 # extract respective actions from response
-                raw_actions = extract_section_by_name(llm_response, "ACTIONS").split("\n## ")[1:]
-                actions = []
-                for i in raw_actions:
-                    action_name, rest_of_string = i.split("\n", 1)
-                    actions.append(
-                        parse_action(llm_response=rest_of_string, action_name=action_name)
-                    )
-                    
+                raw_actions = extract_section_by_name(llm_response, "ACTIONS")
+                raw_actions_list = split_sections(raw_actions, level=2)
+                self.actions = parse_actions_list(raw_actions_list)
        
-                # extract respective Problem types from response
-                raw_objects = extract_section_by_name(llm_response, "OBJECTS").split("\n## OUTPUT")[1]
-                objects = parse_objects(raw_objects, md_mode=True)
-                raw_initial = extract_section_by_name(llm_response, "INITIAL").split("\n## OUTPUT")[1]
-                initial = parse_initial(raw_initial, md_mode=True)
-                raw_goal = extract_section_by_name(llm_response, "GOAL").split("\n## OUTPUT")[1]
-                goal = parse_goal(raw_goal, md_mode=True)
+       
+                # --- Extract respective Problem types from response ---
                 
-                self.types_hierarchy = types_hierarchy
-                self.predicates = predicates
-                self.actions = actions
-                self.objects = objects
-                self.initial = initial
-                self.goal = goal
-                if self.isHTN:
-                    self.tasks = tasks
-
-                if self.isHTN:
-                    return types_hierarchy, predicates, tasks, actions, objects, initial, goal, llm_response
-                else:
-                    return types_hierarchy, predicates, actions, objects, initial, goal, llm_response
+                raw_objects = extract_section_by_name(llm_response, "OBJECTS")
+                raw_objects = extract_section_by_name(raw_objects, "OUTPUT", level=2)
+                self.objects = parse_objects(raw_objects, md_mode=True)
+                
+                raw_initial = extract_section_by_name(llm_response, "INITIAL")
+                raw_initial = extract_section_by_name(raw_initial, "OUTPUT", level=2)
+                self.initial = parse_initial(raw_initial, md_mode=True)
+                
+                raw_goal = extract_section_by_name(llm_response, "GOAL")
+                raw_goal = extract_section_by_name(raw_goal, "OUTPUT", level=2)
+                self.goal = parse_goal(raw_goal, md_mode=True)
+                
+                return llm_response
 
             except Exception as e:
                 print(
@@ -137,7 +120,8 @@ class MainBuilder(DomainBuilder, TaskBuilder):
 
         raise RuntimeError("Max retries exceeded. Failed to extract task.")
     
-    def method_desc(self, method: HPDLMethod) -> str:
+    
+    def HPDLmethod_desc(self, method: HPDLMethod) -> str:
         """Helper function to format method descriptions"""
         # param_str = "\n".join(
         #     [f"{name} - {type}" for name, type in method["params"].items()]
@@ -149,30 +133,66 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         desc += ")"
         return desc
     
-    def methods_desc(self, methods) -> str:
+    def HPDLmethods_desc(self, methods) -> str:
         """Helper function to combine all methods descriptions"""
         desc = ""
         for method in methods:
-            desc += "\n\n" + indent(self.method_desc(method), level=1)
+            desc += "\n\n" + indent(self.HPDLmethod_desc(method), level=1)
+        return desc
+    
+    def HDDLmethods_desc(self, methods) -> str:
+        """Helper function to combine all methods descriptions"""
+        desc = ""
+        for method in methods:
+            desc += "\n\n" + indent(self.HDDLmethod_desc(method), level=1)
+        return desc
+    
+    def HDDLmethod_desc(self, method) -> str:
+        """Helper function to format method descriptions"""
+        param_str = "\n".join(
+            [f"{name} - {type}" for name, type in method["params"].items()]
+        )  # name includes ?
+        desc = f"(:method {method['name']}\n"
+        desc += f"   :parameters (\n{indent(string=param_str, level=2)}\n   )\n"
+        desc += f"   :task\n{indent(string=method['task'], level=2)}\n"
+        desc += f"   :ordered-tasks\n{indent(string=method['tasks'], level=2)}\n"
+        desc += ")"
         return desc
     
     
-    def task_desc(self, task: HPDLTask) -> str:
+    def HPDLtask_desc(self, task) -> str:
         """Helper function to format task descriptions"""
         param_str = "\n".join(
             [f"{name} - {type}" for name, type in task["params"].items()]
         )  # name includes ?
         desc = f"(:task {task['name']}\n"
         desc += f"   :parameters (\n{indent(string=param_str, level=2)}\n   )\n"
-        desc += f"   {indent(string=self.methods_desc(task['methods']), level=0)}\n"
+        desc += f"   {indent(string=self.HPDLmethods_desc(task['methods']), level=0)}\n"
         desc += ")"
         return desc
             
-    def tasks_descs(self, tasks) -> str:
+    def HPDLtasks_descs(self, tasks: HPDLTask) -> str:
         """Helper function to combine all task descriptions"""
         desc = ""
         for task in tasks.values():
-            desc += "\n\n" + indent(self.task_desc(task), level=1)
+            desc += "\n\n" + indent(self.HPDLtask_desc(task), level=1)
+        return desc
+    
+    def HDDLtask_desc(self, task) -> str:
+        """Helper function to format task descriptions"""
+        param_str = "\n".join(
+            [f"{name} - {type}" for name, type in task["params"].items()]
+        )  # name includes ?
+        desc = f"(:task {task['name']}\n"
+        desc += f"   :parameters (\n{indent(string=param_str, level=2)}\n   )\n"
+        desc += ")"
+        return desc
+    
+    def HDDLtasks_descs(self, tasks: HDDLTask) -> str:
+        """Helper function to combine all task descriptions"""
+        desc = ""
+        for task in tasks.values():
+            desc += "\n\n" + indent(self.HDDLtask_desc(task), level=1)
         return desc
     
     def get_domain(self, language='PRED') -> str:
@@ -197,18 +217,13 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                 language = 'PDDL'
         
         #Extract types string
-        types = format_types(self.types_hierarchy)  # retrieve types
-        pruned_types = {
-            name: description
-            for name, description in types.items()
-        }
+        types = format_types(self.types_hierarchy)
+        pruned_types = prune_unsupported_keywords(types)
         types_str = "\n".join(pruned_types)
                 
         #Extract predicates string
-        predicate_str = "\n".join(
-            [pred["clean"].replace(":", " ; ") for pred in self.predicates]
-        ) 
-        
+        predicate_str = self.format_predicates(self.predicates)
+                
         desc = ""
         desc += f"(define (domain {self.domain_name})\n"
         desc += (
@@ -217,9 +232,12 @@ class MainBuilder(DomainBuilder, TaskBuilder):
         )
         desc += f"   (:types \n{indent(string=types_str, level=2)}\n   )\n\n"
         desc += f"   (:predicates \n{indent(string=predicate_str, level=2)}\n   )"
-        if self.isHTN:
-            desc += self.tasks_descs(self.tasks)
-            # desc += self.method_descs(self.methods)
+        if language == 'HPDL':
+            desc += self.HPDLtasks_descs(self.tasks)
+        elif language == 'HDDL':
+            desc += self.HDDLtasks_descs(self.tasks)
+            for task in self.tasks.values():
+                desc += self.HDDLmethods_desc(task["methods"])
         desc += self.action_descs(self.actions)
         desc += "\n)"
         desc = desc.replace("AND", "and").replace("OR", "or")

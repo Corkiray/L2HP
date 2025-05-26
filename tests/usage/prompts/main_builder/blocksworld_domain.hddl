@@ -1,109 +1,119 @@
 (define (domain bloques)
    (:requirements
-      :strips :typing)
+      :strips :typing :hierarchy)
 
    (:types 
-      entity
-      block - entity
-      arm - entity
-      surface - entity
-      table - surface
+      block
+      gripper
    )
 
    (:predicates 
-      (on ?b1 - block ?b2 - block) ;  'block ?b1 is on block ?b2'
-      (on\_table ?b - block) ;  'block ?b is on the table'
-      (clear ?b - block) ;  'block ?b has nothing on top'
-      (holding ?b - block) ;  'the robot arm is holding block ?b'
-      (empty\_hand ) ;  'the robot arm is empty'
+      (empty ?g - gripper) ;  'True if the gripper is not holding anything'
+      (clear ?b - block) ;  'True if the top of the block is unoccupied'
+      (on_table ?b - block) ;  'True if the block is on the table'
+      (on ?b1 - block ?b2 - block) ;  'True if b1 is on top of b2'
+      (holding ?g - gripper ?b - block) ;  'True if the gripper is holding block b'
    )
 
-   (:action pick\_block
+   (:task achieve_on
       :parameters (
-         
+         ?top - block
+         ?bottom - block
       )
-      :precondition
-         (and
-             (clear ?b) ; block is clear
-             (on_table ?b) ; block is on table
-             (empty_hand) ; arm is empty
-         )
-      :effect
-         (and
-             (not (on_table ?b)) ; no longer on table
-             (not (clear ?b)) ; not clear while held
-             (not (empty_hand)) ; hand now full
-             (holding ?b) ; arm holding block
-         )
    )
 
-   (:action put\_block
+   (:method achieve_on_direct
       :parameters (
-         
+         ?top - block
+         ?bottom - block
+         ?g - gripper
       )
-      :precondition
+      :task
+         (achieve_on ?top ?bottom) ; Stack one block on another
+      :ordered-tasks
          (and
-             (holding ?b) ; holding the block
-         )
-      :effect
-         (and
-             (not (holding ?b)) ; no longer holding
-             (on_table ?b) ; block on table
-             (clear ?b) ; becomes clear
-             (empty_hand) ; hand becomes empty
+             (pickup ?top ?g) ; Pick up the top block
          )
    )
 
-   (:action stack\_block
+   (:action pickup
       :parameters (
-         
+         ?b - block
+         ?g - gripper
       )
       :precondition
          (and
-             (holding ?b1) ; block to stack is held
-             (clear ?b2) ; target block is clear
+             (on_table ?b) ; Block is on the table
+             (clear ?b) ; Nothing on top
+             (empty ?g) ; Gripper is empty
          )
       :effect
          (and
-             (not (holding ?b1)) ; no longer held
-             (not (clear ?b2)) ; now has something on it
-             (on ?b1 ?b2) ; stacked
-             (clear ?b1) ; new top block
-             (empty_hand) ; arm is empty again
+             (holding ?g ?b) ; Gripper now holds the block
+             (not (on_table ?b)) ; Block is no longer on table
+             (not (clear ?b)) ; Block is not clear anymore
+             (not (empty ?g)) ; Gripper is no longer empty
          )
    )
 
-   (:action unstack\_block
+   (:action putdown
       :parameters (
-         
+         ?b - block
+         ?g - gripper
       )
       :precondition
          (and
-             (on ?b1 ?b2) ; stacked on another
-             (clear ?b1) ; nothing on top
-             (empty_hand) ; hand free
+             (holding ?g ?b)
          )
       :effect
          (and
-             (not (on ?b1 ?b2)) ; not stacked anymore
-             (not (clear ?b1)) ; held, not clear
-             (not (empty_hand)) ; hand full
-             (clear ?b2) ; exposed
-             (holding ?b1) ; now held
+             (on_table ?b)
+             (clear ?b)
+             (empty ?g)
+             (not (holding ?g ?b))
          )
    )
 
-   (:action clear\_block
+   (:action stack
       :parameters (
-         
+         ?top - block
+         ?bottom - block
+         ?g - gripper
       )
       :precondition
          (and
-             (not (clear ?b)) ; must not already be clear
+             (holding ?g ?top)
+             (clear ?bottom)
          )
       :effect
          (and
-             (clear ?b) ; make clear — abstract action, decomposed in HTN
+             (on ?top ?bottom)
+             (empty ?g)
+             (not (holding ?g ?top))
+             (not (clear ?bottom))
+             (clear ?top)
+         )
+   )
+
+   (:action unstack
+      :parameters (
+         ?top - block
+         ?bottom - block
+         ?g - gripper
+      )
+      :precondition
+         (and
+             (on ?top ?bottom)
+             (clear ?top)
+             (empty ?g)
+         )
+      :effect
+         (and
+             (holding ?g ?top)
+             (clear ?bottom)
+             (not (on ?top ?bottom))
+             (not (empty ?g))
+             (not (clear ?top))
          )
    )
 )

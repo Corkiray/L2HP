@@ -1,0 +1,311 @@
+# TYPES
+
+To model this domain, we need to consider the different roles that objects can play based on the predicates and actions:
+
+* Objects can be referenced as entities involved in actions and conditions (e.g., being a hand, having texture, being a cat, etc.).
+* Some objects have specific functional roles, such as "hand", "cats", "sneeze", "texture", etc. While these could all be treated as predicates, in this HTN context it is helpful to also treat them as types when describing how predicates relate to each.
+* All objects are ultimately items of interaction, but categorized by function, suggesting a flat hierarchy beneath a general `object` type.
+
+## OUTPUT
+
+{
+"object": "General type representing any item in the domain",
+"children": [
+{"hand": "An object used to manipulate other objects", "children": []},
+{"cat": "An object categorized as a cat", "children": []},
+{"sneeze": "An object capable of sneezing or categorized as such", "children": []},
+{"spring": "An object identified as a spring", "children": []},
+{"texture": "An object with a specific texture property", "children": []},
+{"stupendous": "An object marked as stupendous", "children": []}
+]
+}
+
+# PREDICATES
+
+The predicates define the states and relations between objects that influence actions:
+
+* `hand`, `cats`, `sneeze`, `spring`, `texture`, `stupendous`: unary predicates describing a property of a single object.
+* `vase`, `next`, `collect`: binary predicates representing relationships between two objects.
+
+## OUTPUT
+
+* (hand ?o - object): 'object is used as a hand'
+* (cats ?o - object): 'object is a cat'
+* (sneeze ?o - object): 'object has the sneeze attribute'
+* (spring ?o - object): 'object is a spring'
+* (texture ?o - object): 'object has texture'
+* (stupendous ?o - object): 'object is stupendous'
+* (vase ?o1 - object ?o2 - object): 'object o1 and object o2 are in a vase relationship'
+* (next ?o1 - object ?o2 - object): 'object o1 is followed by object o2 in sequence'
+* (collect ?o1 - object ?o2 - object): 'object o1 is collected with object o2'
+
+# TASKS
+
+Since we are given a set of actions with conditions and effects, and we are to work hierarchically, we infer that each action represents a primitive task. The goal configuration implies higher-level goals such as rearranging or reordering via specific transformations.
+
+We'll define tasks for each action and composite tasks that may group multiple steps needed to reach a certain configuration.
+
+## OUTPUT
+
+* (achieve_next ?from - object ?to - object): 'achieve a next relationship from one object to another'
+* (reconfigure_objects): 'reconfigure all objects to achieve the goal configuration'
+
+# achieve_next
+
+## method_direct_action
+
+### Method Parameters
+
+* ?from - object: 'origin object'
+* ?to - object: 'target object'
+
+### Method Task
+
+(achieve_next ?from ?to) ; DIRECT APPROACH TO BUILD NEXT LINK
+
+### Method Ordered Subtasks
+
+(and
+(paltry_wrapper ?from ?mid ?to) ; TRY to achieve using paltry style
+(sip_wrapper ?from ?mid ?to) ; TRY to correct or adjust path
+)
+
+# reconfigure_objects
+
+## method_reconfigure
+
+### Method Parameters
+
+* none
+
+### Method Task
+
+(reconfigure_objects) ; TRY TO ACHIEVE FINAL CONFIGURATION
+
+### Method Ordered Subtasks
+
+(and
+(achieve_next object_11 object_7) ; Create sequence from object_11 to object_7
+(achieve_next object_12 object_8) ; Create sequence from object_12 to object_8
+)
+
+# ACTIONS
+
+Each of the named actions is a primitive task with associated conditions and effects. We'll model these accordingly.
+
+## paltry
+
+### Action Parameters
+
+* ?h - object: 'used as hand'
+* ?c - object: 'used as cat'
+* ?t - object: 'used as texture'
+
+### Action Preconditions
+
+(and
+(hand ?h)
+(cats ?c)
+(texture ?t)
+(vase ?h ?c)
+(next ?c ?t)
+)
+
+### Action Effects
+
+(and
+(next ?h ?t)
+; REMOVE
+(not (vase ?h ?c))
+)
+
+## sip
+
+### Action Parameters
+
+* ?h - object
+* ?c - object
+* ?t - object
+
+### Action Preconditions
+
+(and
+(hand ?h)
+(cats ?c)
+(texture ?t)
+(next ?h ?t)
+(next ?c ?t)
+)
+
+### Action Effects
+
+(and
+(vase ?h ?c)
+(not (next ?h ?t))
+)
+
+## clip
+
+### Action Parameters
+
+* ?h - object
+* ?s - object
+* ?t - object
+
+### Action Preconditions
+
+(and
+(hand ?h)
+(sneeze ?s)
+(texture ?t)
+(next ?s ?t)
+(next ?h ?t)
+)
+
+### Action Effects
+
+(and
+(vase ?h ?s)
+(not (next ?h ?t))
+)
+
+## wretched
+
+### Action Parameters
+
+* ?s1 - object
+* ?t1 - object
+* ?t2 - object
+* ?sp - object
+
+### Action Preconditions
+
+(and
+(sneeze ?s1)
+(texture ?t1)
+(texture ?t2)
+(stupendous ?sp)
+(next ?s1 ?t1)
+(collect ?t1 ?sp)
+(collect ?t2 ?sp)
+)
+
+### Action Effects
+
+(and
+(next ?s1 ?t2)
+(not (next ?s1 ?t1))
+)
+
+## memory
+
+### Action Parameters
+
+* ?c - object
+* ?s1 - object
+* ?s2 - object
+
+### Action Preconditions
+
+(and
+(cats ?c)
+(spring ?s1)
+(spring ?s2)
+(next ?c ?s1)
+)
+
+### Action Effects
+
+(and
+(next ?c ?s2)
+(not (next ?c ?s1))
+)
+
+## tightfisted
+
+### Action Parameters
+
+* ?h - object
+* ?s - object
+* ?t - object
+
+### Action Preconditions
+
+(and
+(hand ?h)
+(sneeze ?s)
+(texture ?t)
+(next ?s ?t)
+(vase ?h ?s)
+)
+
+### Action Effects
+
+(and
+(next ?h ?t)
+(not (vase ?h ?s))
+)
+
+# OBJECTS
+
+We derive the list of objects based on the initial conditions:
+
+## OUTPUT
+
+object_0 - object
+object_1 - object
+object_2 - object
+object_3 - object
+object_4 - object
+object_5 - object
+object_6 - object
+object_7 - object
+object_8 - object
+object_9 - object
+object_10 - object
+object_11 - object
+object_12 - object
+
+# INITIAL
+
+Facts from the problem definition are added directly:
+
+## OUTPUT
+
+(cats object_0): object_0 is a cat
+(collect object_10 object_2): object_10 is collected with object_2
+(collect object_5 object_1): object_5 is collected with object_1
+(collect object_6 object_1): object_6 is collected with object_1
+(collect object_7 object_1): object_7 is collected with object_1
+(collect object_8 object_2): object_8 is collected with object_2
+(collect object_9 object_2): object_9 is collected with object_2
+(hand object_11): object_11 is a hand
+(hand object_12): object_12 is a hand
+(next object_0 object_8): object_0 is next to object_8
+(next object_11 object_6): object_11 is next to object_6
+(next object_12 object_10): object_12 is next to object_10
+(next object_3 object_7): object_3 is next to object_7
+(next object_4 object_10): object_4 is next to object_10
+(sneeze object_3): object_3 is sneeze
+(sneeze object_4): object_4 is sneeze
+(spring object_5): object_5 is spring
+(spring object_8): object_8 is spring
+(stupendous object_1): object_1 is stupendous
+(stupendous object_2): object_2 is stupendous
+(texture object_10): object_10 has texture
+(texture object_5): object_5 has texture
+(texture object_6): object_6 has texture
+(texture object_7): object_7 has texture
+(texture object_8): object_8 has texture
+(texture object_9): object_9 has texture
+
+# GOAL
+
+The goal states that specific "next" relationships must be true:
+
+## OUTPUT
+
+(AND ; all the following should be done
+(next object_11 object_7) ; object_11 should be followed by object_7
+(next object_12 object_8) ; object_12 should be followed by object_8
+)
