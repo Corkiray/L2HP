@@ -1,72 +1,11 @@
 """
-This file contains collection of functions for extracting/parsing markdown datastructures from LLM output
+This file contains collection of functions for extracting/parsing HTN information from text.
 """
-import re
 from .pddl_parser import *
 from .pddl_types import *
+from .md_parser import *
 
-def extract_section_by_name(markdown_text: str, title: str, level : int = 1) -> str:
-    """
-    Extracts the content of a specific section in markdown text based on the title and level.
-
-    Args:
-        markdown_text (str): The raw markdown text.
-        title (str): The title of the section to extract.
-        level (str): The markdown level of the title (e.g., 1="#", 2="##", 3="###").
-
-    Returns:
-        str: The content of the section, or None if the section is not found.
-    """
-    pattern = rf"(?:^|\n){level*'#'} {re.escape(title)}\n(.*?)(?=\n{level*'#'} |\Z)"
-    match = re.search(pattern, markdown_text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    else:
-        return ""
-
-def split_sections(markdown_text: str, level = 1) -> list[str]:
-    """
-    Splits the markdown text into sections based on the headings.
-
-    Args:
-        markdown_text (str): The raw markdown text.
-        level (str): The markdown level of the headings to split by (e.g., 1="#", 2="##", 3="###").
-
-    Returns:
-        list: A list of sections, each section is a string.
-    """
-    pattern = rf"(?:^|\n){level*'#'} (.+?)(?=\n{level*'#'} |\Z)"
-    sections = re.findall(pattern, markdown_text, re.DOTALL)
-    return [section.strip() for section in sections]
-
-def extract_list(markdown_text: str) -> list[str]:
-    """
-    Parses a markdown list from the given text.
-
-    Args:
-        markdown_text (str): The raw markdown text containing a list.
-
-    Returns:
-        list: A list of items extracted from the markdown list.
-    """
-    items = re.findall(r"^\s*[-*] (.+)$", markdown_text, re.MULTILINE)
-    return [item.strip() for item in items]
-
-def prune_unsupported_keywords(dictionary: dict, unsupported_keywords: list = ["object", "pddl", "lisp"]) -> dict:
-    """
-    Prune from a dict keywords that are not supported
-    Args:
-        types_hierarchy (dict): A dictionary of types.
-    Returns:
-        dict: The pruned dictionary of types.
-    """
-    return {
-        name: description
-        for name, description in dictionary.items()
-        if name not in unsupported_keywords
-    }
-    
-def parse_tasks(llm_response: str) -> dict[str, HPDLTask]:
+def parse_tasks(text: str) -> dict[str, HPDLTask]:
     """
     Extracts HTN Tasks from LLM response and returns it as a list of dict strings
 
@@ -78,7 +17,7 @@ def parse_tasks(llm_response: str) -> dict[str, HPDLTask]:
     """
     new_tasks = dict()
 
-    for p_line in llm_response.split("\n"):
+    for p_line in text.split("\n"):
         if ("." not in p_line or not p_line.split(".")[0].strip().isdigit()) and not (
             p_line.startswith("-") or p_line.startswith("(") or p_line.startswith("*")
         ):
@@ -145,7 +84,7 @@ def parse_tasks(llm_response: str) -> dict[str, HPDLTask]:
      
     return new_tasks
 
-def parse_method(llm_response: str, method_name: str) -> HPDLMethod:
+def parse_method(text: str, method_name: str) -> HPDLMethod:
     """
     Parse a method from a given LLM output.
 
@@ -157,10 +96,10 @@ def parse_method(llm_response: str, method_name: str) -> HPDLMethod:
         Method: The parsed method.
     """
     from .pddl_parser import parse_params
-    parameters, _ = parse_params(llm_response)
+    parameters, _ = parse_params(text)
     try:
         task = (
-            llm_response.split("Method Task\n")[1]
+            text.split("Method Task\n")[1]
             .split("###")[0]
             .strip(" `\n")
         )
@@ -170,7 +109,7 @@ def parse_method(llm_response: str, method_name: str) -> HPDLMethod:
         )
     try:
         subtasks = (
-            llm_response.split("Method Ordered Subtasks\n")[1]
+            text.split("Method Ordered Subtasks\n")[1]
             .split("###")[0]
             .strip(" `\n")
         )
@@ -179,12 +118,15 @@ def parse_method(llm_response: str, method_name: str) -> HPDLMethod:
         raise Exception(
             "Could not find the 'Method Ordered Subtasks' section in the output. Provide the entire response, including all headings even if some are unchanged."
         )
+        
     return {
-        "name": method_name,
-        "params": parameters,
-        "task": task,
-        "tasks": subtasks,
-    }
+        'name': method_name,
+        'params': parameters,
+        'task': task,
+        'ordered_subtasks': subtasks,
+        'raw': text,
+        'desc': None
+        }
 
 def parse_methods(raw_methods: str) -> list[HPDLMethod | HDDLMethod]:
     """
@@ -200,31 +142,63 @@ def parse_methods(raw_methods: str) -> list[HPDLMethod | HDDLMethod]:
     raw_methods_list = split_sections(raw_methods, level=2)
     for j in raw_methods_list:
         method_name, rest_of_string = j.split("\n", 1)
-        method = parse_method(llm_response=rest_of_string, method_name=method_name)
+        method = parse_method(text=rest_of_string, method_name=method_name)
         methods.append(method)
     return methods
 
-
-def substract_logical_expression(llm_response: str) -> str:
+def parse_actions_list(raw_actions_list: list[str]) -> list[Action]:
     """
-    Substracts logical expression from LLM response and returns it as a string
+    Parses actions from a list of strings and returns them as a list of Action objects.
 
     Args:
-        llm_response (str): The LLM output.
+        raw_actions_list (list[str]): List of action strings.
 
     Returns:
-        states (list[dict[str,str]]): list of initial states in dictionaries
+        list[Action]: List of Action objects.
     """
-    # Find all substrings enclosed by parentheses
-    matches = re.findall(r'\((.*)\)', llm_response, re.DOTALL)
+    actions = []
+    for action_str in raw_actions_list:
+        action_name, rest_of_string = action_str.split("\n", 1)
+        action = parse_md_action(rest_of_string, action_name)
+        actions.append(action)
+    return actions
 
-    # Return the largest match or an empty string if no matches
-    if matches:
-        return f"({max(matches, key=len)})"
-    else:
-        raise ValueError("Could not find the logical expression in the LLM output. Provide the entire response, including all headings even if some are unchanged.")
+def parse_md_action(markdown_text: str, action_name: str) -> Action:
+    """
+    Parses a single action from markdown text and returns it as a dictionary.
 
-def parse_list_of_predicates(llm_output) -> list[Predicate]:
+    Args:
+        markdown_text (str): The markdown text containing the action details.
+        action_name (str): The name of the action.
+
+    Returns:
+        Action: The parsed action as a dictionary.
+    """
+    parameters, _ = parse_params(markdown_text)
+    
+    preconditions = (
+        markdown_text.split("Action Preconditions\n")[1]
+        .split("###")[0]
+        .strip(" `\n")
+    )
+    preconditions = substract_logical_expression(preconditions)
+   
+    effects = (
+            markdown_text.split("Action Effects\n")[1]
+            .split("###")[0]
+            .strip(" `\n")
+        )
+    effects = substract_logical_expression(effects)
+    
+    return {
+        "name": action_name,
+        "params": parameters,
+        "preconditions": preconditions,
+        "effects": effects,
+        "raw": markdown_text
+        }
+    
+def parse_list_of_predicates(text: str) -> list[Predicate]:
     """
     Parses new predicates from LLM into Python format.
 
@@ -232,7 +206,7 @@ def parse_list_of_predicates(llm_output) -> list[Predicate]:
     """
     new_predicates = list()
 
-    for p_line in llm_output.split("\n"):
+    for p_line in text.split("\n"):
         if ("." not in p_line or not p_line.split(".")[0].strip().isdigit()) and not (
             p_line.startswith("-") or p_line.startswith("(") or p_line.startswith("*")
         ):
@@ -299,55 +273,3 @@ def parse_list_of_predicates(llm_output) -> list[Predicate]:
         )
 
     return new_predicates
-
-def parse_actions_list(raw_actions_list: list[str]) -> list[Action]:
-    """
-    Parses actions from a list of strings and returns them as a list of Action objects.
-
-    Args:
-        raw_actions_list (list[str]): List of action strings.
-
-    Returns:
-        list[Action]: List of Action objects.
-    """
-    actions = []
-    for action_str in raw_actions_list:
-        action_name, rest_of_string = action_str.split("\n", 1)
-        action = parse_md_action(rest_of_string, action_name)
-        actions.append(action)
-    return actions
-
-def parse_md_action(markdown_text: str, action_name: str) -> Action:
-    """
-    Parses a single action from markdown text and returns it as a dictionary.
-
-    Args:
-        markdown_text (str): The markdown text containing the action details.
-        action_name (str): The name of the action.
-
-    Returns:
-        Action: The parsed action as a dictionary.
-    """
-    from .pddl_parser import parse_params
-    parameters, _ = parse_params(markdown_text)
-    
-    preconditions = (
-        markdown_text.split("Action Preconditions\n")[1]
-        .split("###")[0]
-        .strip(" `\n")
-    )
-    preconditions = substract_logical_expression(preconditions)
-   
-    effects = (
-            markdown_text.split("Action Effects\n")[1]
-            .split("###")[0]
-            .strip(" `\n")
-        )
-    effects = substract_logical_expression(effects)
-    
-    return {
-        "name": action_name,
-        "params": parameters,
-        "preconditions": preconditions,
-        "effects": effects,
-    }

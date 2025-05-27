@@ -77,9 +77,10 @@ class HDDLMethod(TypedDict):
 class HPDLMethod(TypedDict):
     name: str
     params: ParameterList
-    desc: Optional[str]
     raw: str
     ordered_subtasks: str
+    task: str
+    desc: Optional[str]
     
 class HPDLTask(TypedDict):
     name: str

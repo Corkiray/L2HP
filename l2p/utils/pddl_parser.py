@@ -1,15 +1,15 @@
 """
-This file contains collection of functions for extracting/parsing information from LLM output
+This file contains collection of functions for extracting/parsing markdown information from text
 """
 
+from typing import Tuple
 from pddl.formatter import domain_to_string, problem_to_string
 from pddl import parse_domain, parse_problem
-from .pddl_types import Action, Predicate, HPDLTask, HPDLMethod, HDDLTask, HDDLMethod
+from .pddl_types import Action, Predicate, HPDLTask, HPDLMethod, HDDLTask, HDDLMethod, ParameterList
 from collections import OrderedDict
 from copy import deepcopy
 import re, ast, json, sys, os
-from .md_and_htn_parser import substract_logical_expression
-
+from .md_parser import substract_logical_expression
 
 def load_file(file_path: str):
     _, ext = os.path.splitext(file_path)
@@ -30,7 +30,7 @@ def load_files(folder_path: str):
     return file_contents
 
 
-def parse_params(llm_output):
+def parse_params(llm_output) -> Tuple[ParameterList, list[str]]:
     """
     Parses parameters from LLM into Python format (refer to example templates to see
     how these parameters should be formatted in LLM response).
@@ -64,7 +64,7 @@ def parse_params(llm_output):
             print(f"[WARNING] checking param object types - fail to parse: {line}")
             break
 
-    return params_info, params_raw
+    return ParameterList(params_info), params_raw
 
 def parse_new_predicates(llm_output) -> list[Predicate]:
     """
@@ -219,6 +219,7 @@ def parse_action(llm_response: str, action_name: str) -> Action:
         "params": parameters,
         "preconditions": preconditions,
         "effects": effects,
+        "raw": llm_response,
     }
 
 
@@ -412,7 +413,7 @@ def extract_heading(llm_output: str, heading: str):
     return heading_str
 
 
-def convert_to_dict(llm_response: str) -> dict[str, str]:
+def convert_to_dict(llm_response: str) -> dict[str, str] | None:
     """Converts string into Python dictionary format."""
     dict_pattern = re.compile(
         r"{.*}", re.DOTALL

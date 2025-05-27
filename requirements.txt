@@ -14,6 +14,14 @@ torchaudio
 transformers==4.46.0
 accelerate==1.6.0
 
+# The following packages are required for the unified-planning interface.
+unified-planning
+unified-planning[aries] # For the aries interface, which is used for the HTN planning.
+
+#The following packages are required for reading the datasets.
+pandas
+pyarrow
+
 # Apriorily, the following packages are NOT required, but could be needed in case of some error.
 #jupyter==1.0.0
 #tensorflow==2.17.0

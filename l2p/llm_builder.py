@@ -52,7 +52,7 @@ class LLM(ABC):
         self.api_key: str | None = api_key
 
     @abstractmethod
-    def query(self, prompt: str) -> str:
+    def query(self, prompt: str) -> str | None:
         """
         Abstract method to query an LLM with a given prompt and return the response.
 
@@ -60,6 +60,13 @@ class LLM(ABC):
             prompt (str): The prompt to send to the LLM
         Returns:
             str: The response from the LLM
+        """
+        pass
+    
+    @abstractmethod
+    def reset_tokens(self):
+        """
+        Reset the token counters for the LLM.
         """
         pass
 
@@ -96,12 +103,11 @@ class InferenceClient(LLM):
                 "The 'huggingface_hub' library is required for but is not installed. "
             )
 
-
         self.client = InferenceClient(provider=provider, api_key=api_key)
         self.in_tokens = 0
         self.out_tokens = 0
 
-    def query(self, prompt: str) -> str:
+    def query(self, prompt: str) -> str | None:
         completion = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -138,6 +144,20 @@ class InferenceClient(LLM):
     def reset_tokens(self):
         self.in_tokens = 0
         self.out_tokens = 0
+        
+    def valid_models(self) -> list[str]:
+        """
+        List of valid model parameters for InferenceClient.
+        Returns a list of valid model names.
+        """
+        return [
+            "deepseek-ai/DeepSeek-V3-0324",
+            "deepseek-ai/DeepSeek-V3-7B",
+            "deepseek-ai/DeepSeek-V3-13B",
+            "deepseek-ai/DeepSeek-V3-32B",
+            "deepseek-ai/DeepSeek-V3-70B",
+        ]
+
 class OPENAI(LLM):
     """Accessing OpenAI"""
 

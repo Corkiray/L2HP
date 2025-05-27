@@ -1,78 +1,84 @@
 import os, json, sys
-WORKING_DIR = "/mnt/homeGPU/ipuerta/l2p-htn"
+from typing import Tuple
+# WORKING_DIR = "/mnt/homeGPU/ipuerta/l2p-htn"
 
-os.chdir(WORKING_DIR)
-sys.path.append(os.getcwd())
-print(os.getcwd())
-from mySecrets import hf_token
-from l2p.llm_builder import InferenceClient, HUGGING_FACE
-from l2p.main_builder import MainBuilder
-from l2p.utils.pddl_parser import prune_predicates, format_types
-from l2p.utils.planners_interface import UP_Planner
-from tests.mock_llm import MockLLM
+# os.chdir(WORKING_DIR)
+# sys.path.append(os.getcwd())
+# print(os.getcwd())
+# from l2p.utils.pddl_parser import prune_predicates, format_types
+# from tests.mock_llm import MockLLM
 
-# from up_siadex import SIADEXEngine
-# env = up.environment.get_environment()
-# env.factory.add_engine('siadex', __name__, "SIADEXEngine")
-
-API_KEY = hf_token
-REQUIEREMENTS = [":strips", ":typing", ":hierarchy", ":negative-preconditions", ":conditional-effects",]
-DOMAIN_PATH = "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/domain.hddl"
-PROBLEM_PATH = "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/problem.hddl"
-PLAN_PATH = "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/plan.txt"
+from l2p.llm_builder import LLM
+from l2p.model_builder import ModelBuilder
+from l2p.planner_builder import Planner
 
 
-#       Auxiliar Functions
-def load_file(file_path):
-    _, ext = os.path.splitext(file_path)
-    with open(file_path, 'r') as file:
-        if ext == '.json': return json.load(file)
-        else: return file.read().strip()
+class NL2HTNAgent:
+    """
+    An agent that uses a language model to extract domain and problem from a task description,
+    and then runs a planner to generate a plan.
+    """
+    
+    def __init__(self, prompt_template: str, llm: LLM, builder: ModelBuilder, planner: Planner) -> None:
+        """
+        Initializes the NL2HTNAgent with a language model, a builder for the domain and problem,
+        and a planner to generate plans.
+        :param prompt_template: The template to use for prompting the LLM.
+        :param llm: The language model to use for extracting the domain and problem.
+        :param builder: The builder to use for constructing the domain and problem.
+        :param planner: The planner to use for generating plans.
+        """
+        self.llm = llm
+        self.builder = builder
+        self.prompt_template = prompt_template
+        self.planner = planner
+
+    def run(self, task_desc: str, domain_path: str, problem_path: str, plan_path: str) -> Tuple[str, int]:
+        """
+        Runs the agent to extract the domain and problem, and then runs the planner.
+        :param task_desc: The task description to run the agent on.
+        :domain_path: Path to save the domain file.
+        :problem_path: Path to save the problem file.
+        """
+        
+        # Extract the domain and problem using the LLM
+        try:
+            llm_output = self.builder.extract_domain_and_problem(
+                model=self.llm,
+                task_desc=task_desc,
+                prompt_template=self.prompt_template,
+            )
+            # print("LLM Output:", llm_output)
+        except Exception as e:
+            return f"Error extracting domain and problem: {e}", 1
+        
+        # Process the outputs to get domain and problem
+        try:
+            domain_str = self.builder.get_domain()
+            problem_str = self.builder.get_problem()     
+        except Exception as e:
+            return f"Error processing domain and problem: {e}", 2
+        
+        # Save the domain and problem to files
+        with open(domain_path, "w") as file:
+            file.write(domain_str)
+        with open(problem_path, "w") as file:
+            file.write(problem_str)
+        
+        # Run planner
+        try:
+            plan = self.planner.solve(domain_path, problem_path)
+        except Exception as e:
+            return f"Error running planner: {e}", 3
+        
+        # Write generated plan into folder
+        with open(plan_path, "w") as file:
+            file.write(plan)
+        
+        
+        
+        return f"Plan generated successfully", 0
 
 
 
 
-#       Initializations and Loadings
-planner = UP_Planner('aries')  # FastDownward planner
-builder = MainBuilder("bloques", "bloques_problem", isHTN=True, requirements=REQUIEREMENTS)
-
-# model = InferenceClient(model="deepseek-ai/DeepSeek-V3-0324",
-#     provider="nebius", api_key=hf_token, max_tokens=500)
-
-# model = HUGGING_FACE(model_path="Qwen/Qwen2.5-7B-Instruct-1M")
-model = MockLLM(
-    [
-        load_file(
-            "/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/llm_output.txt"
-        )
-    ]
-)
-
-
-# load in assumptions
-domain_desc = load_file(r'tests/usage/prompts/domain/blocksworld_domain.txt')
-extract_hddl_domain_and_problem_prompt = load_file(r'templates/model_templates/extract_hddl_model.txt')
-
-
-#       Execution
-
-# extract predicates via LLM
-output_list = builder.extract_domain_and_problem(
-    model=model,
-    task_desc=domain_desc,
-    prompt_template=extract_hddl_domain_and_problem_prompt,
-    )
-
-# Save the domain and problem to files
-with open(DOMAIN_PATH, "w") as file:
-    file.write(builder.get_domain('HDDL'))
-with open(PROBLEM_PATH, "w") as file:
-    file.write(builder.get_problem())
-
-
-# Run planner
-plan = planner.solve(DOMAIN_PATH, PROBLEM_PATH)
-
-# Write generated plan into folder
-with open(PLAN_PATH, "w") as file:
-    file.write(plan)

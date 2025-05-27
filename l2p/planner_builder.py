@@ -1,10 +1,15 @@
+from abc import ABC, abstractmethod
 from unified_planning.shortcuts import OneshotPlanner
 from unified_planning.io import PDDLReader
-from .pddl_planner import FastDownward as FD
+from .utils.pddl_planner import FastDownward as FD
 
-class Planner:
+class Planner(ABC):
+    
+    @abstractmethod
     def solve(self, domain_path, problem_path):
         raise NotImplementedError("This method should be overridden by subclasses")
+    
+    @abstractmethod
     def get_plan(self):
         raise NotImplementedError("This method should be overridden by subclasses")
      
@@ -55,8 +60,8 @@ class FastDownward(Planner, FD):
         :param problem_path: Path to the PDDL problem file.
         :return: The plan as a string if found, otherwise None.
         """
-        isSuccess, plan = super().run_fast_downward(domain_file=domain_path, problem_file=problem_path, search_alg = search_alg)
-        if isSuccess:
+        is_success, plan = super().run_fast_downward(domain_file=domain_path, problem_file=problem_path, search_alg = search_alg)
+        if is_success:
             print("Plan:", plan)
             self.plan = plan
             return plan

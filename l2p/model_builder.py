@@ -10,7 +10,7 @@ from .llm_builder import LLM, require_llm
 from .domain_builder import DomainBuilder
 from .task_builder import TaskBuilder
 
-class MainBuilder(DomainBuilder, TaskBuilder):
+class ModelBuilder(DomainBuilder, TaskBuilder):
     """
     Class to build a planning model, including the domain and problem specifications and the HTN capabilities.
     """
@@ -119,7 +119,7 @@ class MainBuilder(DomainBuilder, TaskBuilder):
                 time.sleep(2)  # add a delay before retrying
 
         raise RuntimeError("Max retries exceeded. Failed to extract task.")
-    
+
     
     def HPDLmethod_desc(self, method: HPDLMethod) -> str:
         """Helper function to format method descriptions"""

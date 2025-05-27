@@ -6,7 +6,7 @@ sys.path.append(os.getcwd())
 print(os.getcwd())
 from mySecrets import hf_token
 from l2p.llm_builder import InferenceClient, HUGGING_FACE
-from l2p.main_builder import MainBuilder
+from l2p.main_builder import ModelBuilder
 from l2p.utils.pddl_parser import prune_predicates, format_types
 from tests.mock_llm import MockLLM
 from l2p import *
@@ -30,7 +30,7 @@ def load_file(file_path):
 
 #       Initializations and Loadings
 planner = FastDownward(planner_path="/mnt/homeGPU/ipuerta/l2p-htn/downward/downward/fast-downward.py")  # FastDownward planner
-builder = MainBuilder("bloques", "bloques_problem")
+builder = ModelBuilder("bloques", "bloques_problem")
 builder.requirements = REQUIEREMENTS
 
 # model = InferenceClient(model="deepseek-ai/DeepSeek-V3-0324",
