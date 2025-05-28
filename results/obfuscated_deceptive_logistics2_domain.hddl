@@ -1,0 +1,194 @@
+(define (domain domain_name)
+   (:requirements
+      :strips :typing :hierarchy :negative-preconditions :conditional-effects)
+
+   (:types 
+      hand - object
+      cat - object
+      sneeze - object
+      spring - object
+      texture - object
+      stupendous - object
+   )
+
+   (:predicates 
+      (hand ?o - object) ;  'object is used as a hand'
+      (cats ?o - object) ;  'object is a cat'
+      (sneeze ?o - object) ;  'object has the sneeze attribute'
+      (spring ?o - object) ;  'object is a spring'
+      (texture ?o - object) ;  'object has texture'
+      (stupendous ?o - object) ;  'object is stupendous'
+      (vase ?o1 - object ?o2 - object) ;  'object o1 and object o2 are in a vase relationship'
+      (next ?o1 - object ?o2 - object) ;  'object o1 is followed by object o2 in sequence'
+      (collect ?o1 - object ?o2 - object) ;  'object o1 is collected with object o2'
+   )
+
+   (:task achieve_next
+      :parameters (
+         ?from - object
+         ?to - object
+      )
+   )
+
+   (:task reconfigure_objects
+      :parameters (
+         
+      )
+   )
+
+   (:method method_direct_action
+      :parameters (
+         ?from - object
+         ?to - object
+      )
+      :task
+         (achieve_next ?from ?to) ; DIRECT APPROACH TO BUILD NEXT LINK
+      :ordered-tasks
+         (and
+         (paltry_wrapper ?from ?mid ?to) ; TRY to achieve using paltry style
+         (sip_wrapper ?from ?mid ?to) ; TRY to correct or adjust path
+         )
+   )
+
+   (:method method_reconfigure
+      :parameters (
+         
+      )
+      :task
+         (reconfigure_objects) ; TRY TO ACHIEVE FINAL CONFIGURATION
+      :ordered-tasks
+         (and
+         (achieve_next object_11 object_7) ; Create sequence from object_11 to object_7
+         (achieve_next object_12 object_8) ; Create sequence from object_12 to object_8
+         )
+   )
+
+   (:action paltry
+      :parameters (
+         ?h - object
+         ?c - object
+         ?t - object
+      )
+      :precondition
+         (and
+         (hand ?h)
+         (cats ?c)
+         (texture ?t)
+         (vase ?h ?c)
+         (next ?c ?t)
+         )
+      :effect
+         (and
+         (next ?h ?t)
+         ; REMOVE
+         (not (vase ?h ?c))
+         )
+   )
+
+   (:action sip
+      :parameters (
+         ?h - object
+         ?c - object
+         ?t - object
+      )
+      :precondition
+         (and
+         (hand ?h)
+         (cats ?c)
+         (texture ?t)
+         (next ?h ?t)
+         (next ?c ?t)
+         )
+      :effect
+         (and
+         (vase ?h ?c)
+         (not (next ?h ?t))
+         )
+   )
+
+   (:action clip
+      :parameters (
+         ?h - object
+         ?s - object
+         ?t - object
+      )
+      :precondition
+         (and
+         (hand ?h)
+         (sneeze ?s)
+         (texture ?t)
+         (next ?s ?t)
+         (next ?h ?t)
+         )
+      :effect
+         (and
+         (vase ?h ?s)
+         (not (next ?h ?t))
+         )
+   )
+
+   (:action wretched
+      :parameters (
+         ?s1 - object
+         ?t1 - object
+         ?t2 - object
+         ?sp - object
+      )
+      :precondition
+         (and
+         (sneeze ?s1)
+         (texture ?t1)
+         (texture ?t2)
+         (stupendous ?sp)
+         (next ?s1 ?t1)
+         (collect ?t1 ?sp)
+         (collect ?t2 ?sp)
+         )
+      :effect
+         (and
+         (next ?s1 ?t2)
+         (not (next ?s1 ?t1))
+         )
+   )
+
+   (:action memory
+      :parameters (
+         ?c - object
+         ?s1 - object
+         ?s2 - object
+      )
+      :precondition
+         (and
+         (cats ?c)
+         (spring ?s1)
+         (spring ?s2)
+         (next ?c ?s1)
+         )
+      :effect
+         (and
+         (next ?c ?s2)
+         (not (next ?c ?s1))
+         )
+   )
+
+   (:action tightfisted
+      :parameters (
+         ?h - object
+         ?s - object
+         ?t - object
+      )
+      :precondition
+         (and
+         (hand ?h)
+         (sneeze ?s)
+         (texture ?t)
+         (next ?s ?t)
+         (vase ?h ?s)
+         )
+      :effect
+         (and
+         (next ?h ?t)
+         (not (vase ?h ?s))
+         )
+   )
+)

@@ -155,7 +155,7 @@ class ModelBuilder(DomainBuilder, TaskBuilder):
         desc = f"(:method {method['name']}\n"
         desc += f"   :parameters (\n{indent(string=param_str, level=2)}\n   )\n"
         desc += f"   :task\n{indent(string=method['task'], level=2)}\n"
-        desc += f"   :ordered-tasks\n{indent(string=method['tasks'], level=2)}\n"
+        desc += f"   :ordered-tasks\n{indent(string=method['ordered_subtasks'], level=2)}\n"
         desc += ")"
         return desc
     

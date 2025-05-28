@@ -1,4 +1,5 @@
 import os, json, sys
+import traceback
 from typing import Tuple
 # WORKING_DIR = "/mnt/homeGPU/ipuerta/l2p-htn"
 
@@ -40,7 +41,7 @@ class NL2HTNAgent:
         :domain_path: Path to save the domain file.
         :problem_path: Path to save the problem file.
         """
-        
+
         # Extract the domain and problem using the LLM
         try:
             llm_output = self.builder.extract_domain_and_problem(
@@ -50,14 +51,14 @@ class NL2HTNAgent:
             )
             # print("LLM Output:", llm_output)
         except Exception as e:
-            return f"Error extracting domain and problem: {e}", 1
-        
+            return f"Error extracting domain and problem: {e}\n" + traceback.format_exc(), 1
+
         # Process the outputs to get domain and problem
         try:
             domain_str = self.builder.get_domain()
             problem_str = self.builder.get_problem()     
         except Exception as e:
-            return f"Error processing domain and problem: {e}", 2
+            return f"Error processing domain and problem: {e}\n" + traceback.format_exc(), 2
         
         # Save the domain and problem to files
         with open(domain_path, "w") as file:
@@ -69,13 +70,11 @@ class NL2HTNAgent:
         try:
             plan = self.planner.solve(domain_path, problem_path)
         except Exception as e:
-            return f"Error running planner: {e}", 3
+            return f"Error running planner: {e}\n" + traceback.format_exc(), 3
         
         # Write generated plan into folder
         with open(plan_path, "w") as file:
             file.write(plan)
-        
-        
         
         return f"Plan generated successfully", 0
 

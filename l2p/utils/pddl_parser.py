@@ -55,7 +55,6 @@ def parse_params(llm_output) -> Tuple[ParameterList, list[str]]:
             print(f"[WARNING] checking param object types - not a valid line: '{line}'")
             continue
         try:
-            print(llm_output)
             params_raw.append(line.strip())
             p_info = [e for e in line.split(":")[0].split(" ") if e != ""]
             param_name, param_type = p_info[1].strip(" `"), p_info[3].strip(" `")

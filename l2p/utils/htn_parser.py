@@ -13,7 +13,7 @@ def parse_tasks(text: str) -> dict[str, HPDLTask]:
         llm_response (str): The LLM output.
 
     Returns:
-        list[task]): list of tasks
+        dict[str, HPDLTask]: list of tasks
     """
     new_tasks = dict()
 
@@ -81,7 +81,6 @@ def parse_tasks(text: str) -> dict[str, HPDLTask]:
             "clean": clean,
         }
         
-     
     return new_tasks
 
 def parse_method(text: str, method_name: str) -> HPDLMethod:
@@ -95,7 +94,6 @@ def parse_method(text: str, method_name: str) -> HPDLMethod:
     Returns:
         Method: The parsed method.
     """
-    from .pddl_parser import parse_params
     parameters, _ = parse_params(text)
     try:
         task = (

@@ -18,7 +18,7 @@ TEMPLATE_PATH = "templates/model_templates/extract_hddl_model.txt"
 #       Initializations and Loadings
 dataset = PlanBenchDataset()
 planner = UP_Planner('aries')
-builder = ModelBuilder("domain_name", "problem_name", isHTN=True, requirements=REQUIEREMENTS)
+builder = ModelBuilder("domain_placeholder", "problem_placeholder", isHTN=True, requirements=REQUIEREMENTS)
 
 with open('/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/llm_output.txt', 'r') as file:
     mock_response = file.read()
@@ -37,7 +37,6 @@ agent = NL2HTNAgent(
     planner=planner,
     prompt_template=extract_hddl_domain_and_problem_prompt
 )
-
 
 for task in dataset.data_dict.values():
     print(f"Running task: {task['name']}")
