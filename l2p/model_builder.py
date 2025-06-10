@@ -66,50 +66,50 @@ class ModelBuilder(DomainBuilder, TaskBuilder):
         for attempt in range(max_retries):
             try:
                 model.reset_tokens()
-                llm_response = model.query(prompt)
+                self.llm_response = model.query(prompt)
                                
                 # extract respective types from response
-                raw_types_hierarchy = extract_section_by_name(llm_response, "TYPES")
+                raw_types_hierarchy = extract_section_by_name(self.llm_response, "TYPES")
                 raw_types_hierarchy = extract_section_by_name(raw_types_hierarchy, "OUTPUT", level=2)
                 self.types_hierarchy = convert_to_dict(llm_response=raw_types_hierarchy)
 
                 # extract respective types predicates and tasks from response
-                raw_predicates = extract_section_by_name(llm_response, "PREDICATES")
+                raw_predicates = extract_section_by_name(self.llm_response, "PREDICATES")
                 raw_predicates = extract_section_by_name(raw_predicates, "OUTPUT", level=2)
                 self.predicates = parse_list_of_predicates(raw_predicates)
   
                 if self.isHTN:
                     # extract respective tasks and methods from responseç
-                    raw_tasks = extract_section_by_name(llm_response, "TASKS")
+                    raw_tasks = extract_section_by_name(self.llm_response, "TASKS")
                     raw_tasks = extract_section_by_name(raw_tasks, "OUTPUT", level=2)
                     self.tasks = parse_tasks(raw_tasks)
                     for task in self.tasks.items():
                         task_name = task[0]
-                        raw_task_info = extract_section_by_name(llm_response, task_name)
+                        raw_task_info = extract_section_by_name(self.llm_response, task_name)
                         methods = parse_methods(raw_task_info)
                         self.tasks[task_name]["methods"] = methods
                                              
                 # extract respective actions from response
-                raw_actions = extract_section_by_name(llm_response, "ACTIONS")
+                raw_actions = extract_section_by_name(self.llm_response, "ACTIONS")
                 raw_actions_list = split_sections(raw_actions, level=2)
                 self.actions = parse_actions_list(raw_actions_list)
        
        
                 # --- Extract respective Problem types from response ---
                 
-                raw_objects = extract_section_by_name(llm_response, "OBJECTS")
+                raw_objects = extract_section_by_name(self.llm_response, "OBJECTS")
                 raw_objects = extract_section_by_name(raw_objects, "OUTPUT", level=2)
                 self.objects = parse_objects(raw_objects, md_mode=True)
                 
-                raw_initial = extract_section_by_name(llm_response, "INITIAL")
+                raw_initial = extract_section_by_name(self.llm_response, "INITIAL")
                 raw_initial = extract_section_by_name(raw_initial, "OUTPUT", level=2)
                 self.initial = parse_initial(raw_initial, md_mode=True)
                 
-                raw_goal = extract_section_by_name(llm_response, "GOAL")
+                raw_goal = extract_section_by_name(self.llm_response, "GOAL")
                 raw_goal = extract_section_by_name(raw_goal, "OUTPUT", level=2)
                 self.goal = parse_goal(raw_goal, md_mode=True)
                 
-                return llm_response
+                return self.llm_response
 
             except Exception as e:
                 print(
@@ -230,7 +230,8 @@ class ModelBuilder(DomainBuilder, TaskBuilder):
             indent(string=f"(:requirements\n   {' '.join(self.requirements)})", level=1)
             + "\n\n"
         )
-        desc += f"   (:types \n{indent(string=types_str, level=2)}\n   )\n\n"
+        if types_str != "":
+            desc += f"   (:types \n{indent(string=types_str, level=2)}\n   )\n\n"
         desc += f"   (:predicates \n{indent(string=predicate_str, level=2)}\n   )"
         if language == 'HPDL':
             desc += self.HPDLtasks_descs(self.tasks)
@@ -244,10 +245,11 @@ class ModelBuilder(DomainBuilder, TaskBuilder):
         return desc
 
 
-    def get_problem(self) -> str:
+    def get_problem(self, language: str | None = None) -> str:
         """
         Generates PDDL problem from given information
         Args:
+            language (str): language to use for the problem, can be 'PDDL', 'HPDL', or 'HDDL'
             self.domain_name (str): domain name
             self.problem_name (str): problem name
             self.objects (str): domain objects
@@ -256,17 +258,32 @@ class ModelBuilder(DomainBuilder, TaskBuilder):
         Returns:
             desc (str): PDDL problem
         """
+        
+        if language is None:
+            if self.isHTN:
+                language = 'HDDL'
+            else:
+                language = 'PDDL'
+                
         # construct PDDL components into PDDL problem file
         object_str = self.format_objects(self.objects)
         initial_state_str = self.format_initial(self.initial)
         goal_state_str = self.format_goal(self.goal)
 
-        # generate proper PDDL structure
-        desc = self.generate_task(
-            self.domain_name,
-            self.problem_name,
-            object_str,
-            initial_state_str,
-            goal_state_str,
-        )
+        # Write problem file
+        desc = "(define\n"
+        desc += f"   (problem {self.problem_name})\n"
+        desc += f"   (:domain {self.domain_name})\n\n"
+        desc += f"   (:objects \n{indent(object_str)}\n   )\n\n"
+        if language == 'PDDL':
+            desc += f"   (:init\n{indent(initial_state_str)}\n   )\n\n"
+            desc += f"   (:goal\n{indent(goal_state_str)}\n   )\n\n"
+        if language == 'HPDL':
+            desc += f"   (:tasks-goal\n{indent(':tasks')}\n{indent(goal_state_str, 3)}\n   )\n\n"
+            desc += f"   (:init\n{indent(initial_state_str)}\n   )\n\n"
+        if language == 'HDDL':
+            desc += f"  (:htn\n{indent(':parameters ()')}\n{indent('    :ordered-subtasks', 1)}\n{indent(goal_state_str, 3)}\n\t)\n\n"
+            desc += f"   (:init\n{indent(initial_state_str)}\n   )\n\n"
+        desc += ")"
+        desc = desc.replace("AND", "and").replace("OR", "or")
         return desc

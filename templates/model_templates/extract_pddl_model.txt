@@ -9,28 +9,13 @@ Do not, under any circumstance, output the answers in PDDL format. Final answer 
 
 -----------------------------------------------------
 
-[FORMAT]
+[TEMPLATE]
 
 # TYPES
 
-Do a chain ot thought reasoning about the neccesary types.
+Do a chain of thought reasoning about which types are going to be neccesary. When the reasoning process is finished, you should have a list of types that are going to be used in the domain. The types should be organized in a hierarchy, with the most general type at the top and the most specific types at the bottom. Each type should be described in a short sentence that explains its purpose or meaning within the context of the domain.
 
-End this section with "## OUTPUT" and then the Python dictionary pair '{'name':'description'}' as so:
-
-## OUTPUT
-{
-    "type_1": "description",
-    "type_2": "description",
-    "type_3": "description",
-}
-
-# TYPES HIERARCHY
-
-Do a chain of thought reasoning about the hierarchy of types.
-
-Organize a dependency tree for the class hierarchy between different objects within a PDDL domain. Do not expand on your reasoning, except as short comments. Each object should appear only once, even if it could belong to several types.  Note, that every child should be a subtype of its parent, not physically contained within the parent. You shouldn't create any new types except those needed for organisation of the provided types.
-
-End this section with "## OUTPUT" and then the Python dictionary pair '{'name':'description'}' as so:
+End this block with a "## OUTPUT" section that provides the generated types hierarchy as a Python dictionary, as so:
 
 ## OUTPUT
 {
@@ -51,69 +36,58 @@ End this section with "## OUTPUT" and then the Python dictionary pair '{'name':'
 
 Do a chain of thought reasoning about the neccesary predicates.
 
-End your final answers starting with "### New Predicates" with ''' ''' comment blocks in PDDL as so:
+End this block with a "## OUTPUT" section that provides the list of neccesary predicates in PDDL format, as so:
 
-### New Predicates
+## OUTPUT
 - (predicate_name_1 ?t1 - type_1 ?t2 - type_2): 'predicate_description'
 - (predicate_name_2 ?t3 - type_3 ?t4 - type_4): 'predicate_description'
 - (predicate_name_3 ?t5 - type_5): 'predicate_description'
- 
+
 
 # ACTIONS
-Do a chain of thought reasoning about the neccesary actions.
+Do a chain of thought reasoning about the neccesary actions. End this block with a "## OUTPUT" section that provides the list of neccesary tasks in HDDL format and, then, a section for each task that defines all its existing decompositon methods, All methods are defined by the following subsections: '### Method Parameters', '### Method Task', '### Method Subtasks'. Do it as so:
+End this block with a "## action_name" section for each action. Each section that provides all the neccesary information to define that action through subsections: '### Action Parameters', '### Action Preconditions', '### Action Effects'. Do it as so:
 
-End this section by giving all actions between brackets as underneath the headers for each action: '### Action Parameters,' '### Action Preconditions,' '### Action Effects,' and then split them with '## NEXT ACTION' for the next action as so:
-
-"""
-## [Action name]
+## action_name_1
 ### Action Parameters
 - ?t - type: 'parameter_description'
 
 
 ### Action Preconditions
+```
 (and
     (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
 )
+```
 
 
 ### Action Effects
+```
 (and
     (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
 )
+```
 
+and so on... Do this for each action.
 
-## NEXT ACTION
-## [Action name]
-### Action Parameters
-- ?t - type: 'parameter_description'
-
-
-### Action Preconditions
-(and
-    (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
-)
-
-
-### Action Effects
-(and
-    (predicate_name ?t1 ?t2) ; COMMENT DESCRIPTION
-)
-
-
-and so on...
 
 # OBJECTS
 
-Do a chain of thought reasoning about the neccesary objects.
+Do a chain of thought reasoning about the neccesary objects. End this block with a "## OUTPUT" section that provides the definition of neccesary objects in PDDL format, as so:
 
+## OUTPUT
 truck1 - truck
 
 
 # INITIAL
 
-Do a chain of thought reasoning about which is the initial state.
+Do a chain of thought reasoning about which is the initial state. End this block with a "## OUTPUT" section that provides the definition of the initial istate in PDDL format, as so:
 
+## OUTPUT
+```
 (at truck1 chicago_depot): truck1 is at the chicago_depot
+(at truck3 chicago_depot): truck2 is at the chicago_depot
+```
 
 
 # GOAL
@@ -128,8 +102,6 @@ Do a chain of thought reasoning about which is the goal condition.
 -----------------------------------------------------
 
 [TASK]
-Here is the task to generate from:
+Here is the task, the specific problem to generate the HTN model for:
 
 {task_desc}
-
-

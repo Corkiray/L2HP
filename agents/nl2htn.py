@@ -13,7 +13,6 @@ from l2p.llm_builder import LLM
 from l2p.model_builder import ModelBuilder
 from l2p.planner_builder import Planner
 
-
 class NL2HTNAgent:
     """
     An agent that uses a language model to extract domain and problem from a task description,
@@ -34,24 +33,32 @@ class NL2HTNAgent:
         self.prompt_template = prompt_template
         self.planner = planner
 
-    def run(self, task_desc: str, domain_path: str, problem_path: str, plan_path: str) -> Tuple[str, int]:
+    def run(self, task_desc: str, domain_path: str, problem_path: str, plan_path: str, response_path: str | None = None) -> Tuple[str, int]:
         """
         Runs the agent to extract the domain and problem, and then runs the planner.
         :param task_desc: The task description to run the agent on.
         :domain_path: Path to save the domain file.
         :problem_path: Path to save the problem file.
+        :response_path: Path to save the LLM response.
         """
 
         # Extract the domain and problem using the LLM
         try:
-            llm_output = self.builder.extract_domain_and_problem(
+            self.builder.extract_domain_and_problem(
                 model=self.llm,
                 task_desc=task_desc,
                 prompt_template=self.prompt_template,
             )
-            # print("LLM Output:", llm_output)
         except Exception as e:
             return f"Error extracting domain and problem: {e}\n" + traceback.format_exc(), 1
+        finally:
+            if response_path is not None:
+                # Save the LLM response to a file
+                try:
+                    with open(response_path, "w") as file:
+                        file.write(self.builder.llm_response) # type: ignore
+                except Exception as e:
+                    return f"Error saving LLM response: {e}\n" + traceback.format_exc(), -1
 
         # Process the outputs to get domain and problem
         try:
@@ -73,8 +80,12 @@ class NL2HTNAgent:
             return f"Error running planner: {e}\n" + traceback.format_exc(), 3
         
         # Write generated plan into folder
-        with open(plan_path, "w") as file:
-            file.write(plan)
+        try:
+            with open(plan_path, "w") as file:
+                file.write(plan)
+
+        except Exception as e:
+            return f"Error, no plan found: {e}\n" + traceback.format_exc(), 4
         
         return f"Plan generated successfully", 0
 

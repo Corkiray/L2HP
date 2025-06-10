@@ -89,75 +89,6 @@ class LLM(ABC):
         return []
 
 
-class InferenceClient(LLM):
-    def __init__(self, provider: str, model: str, api_key: str, max_tokens: int) -> None:
-        self.model = model
-        super().__init__(model, api_key)
-        self.provider = provider
-        self.max_tokens = max_tokens
-
-        try:
-            from huggingface_hub import InferenceClient
-        except ImportError:
-            raise ImportError(
-                "The 'huggingface_hub' library is required for but is not installed. "
-            )
-
-        self.client = InferenceClient(provider=provider, api_key=api_key)
-        self.in_tokens = 0
-        self.out_tokens = 0
-
-    def query(self, prompt: str) -> str | None:
-        completion = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            max_tokens=self.max_tokens,
-        )
-
-        return completion.choices[0].message.content
-
-    def query_with_system_prompt(self, system_prompt: str, prompt: str) -> str:
-        completion = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {   "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            max_tokens=self.max_tokens,
-        )
-
-        return completion.choices[0].message.content
-
-    def get_tokens(self) -> tuple[int, int]:
-        return self.in_tokens, self.out_tokens
-
-    def reset_tokens(self):
-        self.in_tokens = 0
-        self.out_tokens = 0
-        
-    def valid_models(self) -> list[str]:
-        """
-        List of valid model parameters for InferenceClient.
-        Returns a list of valid model names.
-        """
-        return [
-            "deepseek-ai/DeepSeek-V3-0324",
-            "deepseek-ai/DeepSeek-V3-7B",
-            "deepseek-ai/DeepSeek-V3-13B",
-            "deepseek-ai/DeepSeek-V3-32B",
-            "deepseek-ai/DeepSeek-V3-70B",
-        ]
-
 class OPENAI(LLM):
     """Accessing OpenAI"""
 
@@ -486,6 +417,111 @@ class HUGGING_FACE(LLM):
     def get_tokens(self) -> tuple[int, int]:
         return self.in_tokens, self.out_tokens
 
+    def reset_tokens(self):
+        self.in_tokens = 0
+        self.out_tokens = 0
+
+
+class InferenceClient(LLM):
+    def __init__(self, provider: str, model: str, api_key: str, max_tokens: int) -> None:
+        self.model = model
+        self.provider = provider
+        self.max_tokens = max_tokens
+
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError:
+            raise ImportError(
+                "The 'huggingface_hub' library is required for but is not installed. "
+            )
+
+        self.client = InferenceClient(provider=provider, api_key=api_key)
+        self.in_tokens = 0
+        self.out_tokens = 0
+
+    def query(self, prompt: str) -> str | None:
+        completion = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            max_tokens=self.max_tokens,
+        )
+
+        return completion.choices[0].message.content
+
+    def query_with_system_prompt(self, system_prompt: str, prompt: str) -> str:
+        completion = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {   "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            max_tokens=self.max_tokens,
+        )
+
+        return completion.choices[0].message.content
+
+    def get_tokens(self) -> tuple[int, int]:
+        return self.in_tokens, self.out_tokens
+
+    def reset_tokens(self):
+        self.in_tokens = 0
+        self.out_tokens = 0
+
+
+class GeminiClient(LLM):
+    def __init__(self, model_name: str, api_key: str, max_tokens: int = 4096) -> None:
+        self.max_tokens = max_tokens
+        self.in_tokens = 0
+        self.out_tokens = 0
+        self.model = model_name
+
+        try:
+            from google import genai
+            from google.api_core import retry
+        except ImportError:
+            raise ImportError(
+                "The 'google.genai' library is required for Gemini but is not installed. "
+                "Install it using: `pip install google-generativeai`."
+            )
+
+        self.client = genai.Client(api_key=api_key)
+        is_retriable = lambda e: (isinstance(e, genai.errors.APIError) and e.code in {429, 503})
+
+        if not hasattr(genai.models.Models.generate_content, '__wrapped__'):
+            genai.models.Models.generate_content = retry.Retry(
+            predicate=is_retriable)(genai.models.Models.generate_content)
+        ### Automated retry
+        # This codelab sends a lot of requests, so set up an automatic retry
+        # that ensures your requests are retried when per-minute quota is reached.
+        
+
+    def query(self, prompt: str) -> str | None:
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt
+        )
+        return response.text
+    
+    def query_with_system_prompt(self, system_prompt: str, prompt: str) -> str:
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=[system_prompt, prompt]
+        )
+        return response.text
+    
+    def get_tokens(self) -> tuple[int, int]:
+        return self.in_tokens, self.out_tokens
+    
     def reset_tokens(self):
         self.in_tokens = 0
         self.out_tokens = 0

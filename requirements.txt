@@ -14,9 +14,13 @@ torchaudio
 transformers==4.46.0
 accelerate==1.6.0
 
+# The following packages are required for the GeminiApi usage.ç
+google-generativeai
+
 # The following packages are required for the unified-planning interface.
 unified-planning
-unified-planning[aries] # For the aries interface, which is used for the HTN planning.
+unified-planning[aries] # For the aries interface, which is used the HDDL planning.
+unified-planning[fast-downward] # For the fast-downward interface, which is used the PDDL planning.
 
 #The following packages are required for reading the datasets.
 pandas

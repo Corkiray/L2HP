@@ -97,17 +97,18 @@ def parse_method(text: str, method_name: str) -> HPDLMethod:
     parameters, _ = parse_params(text)
     try:
         task = (
-            text.split("Method Task\n")[1]
+            text.split("Method Task")[1]
             .split("###")[0]
             .strip(" `\n")
         )
+        task = substract_logical_expression(task)
     except:
         raise Exception(
             "Could not find the 'Method Task' section in the output. Provide the entire response, including all headings even if some are unchanged."
         )
     try:
         subtasks = (
-            text.split("Method Ordered Subtasks\n")[1]
+            text.split("Method Ordered Subtasks")[1]
             .split("###")[0]
             .strip(" `\n")
         )
@@ -175,14 +176,14 @@ def parse_md_action(markdown_text: str, action_name: str) -> Action:
     parameters, _ = parse_params(markdown_text)
     
     preconditions = (
-        markdown_text.split("Action Preconditions\n")[1]
+        markdown_text.split("Action Preconditions")[1]
         .split("###")[0]
         .strip(" `\n")
     )
     preconditions = substract_logical_expression(preconditions)
    
     effects = (
-            markdown_text.split("Action Effects\n")[1]
+            markdown_text.split("Action Effects")[1]
             .split("###")[0]
             .strip(" `\n")
         )

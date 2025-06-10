@@ -185,13 +185,13 @@ Do a chain of thought reasoning about which is the initial state. End this block
 
 # GOAL
 
-Do a chain of thought reasoning about which is the goal condition. End this block with a "## OUTPUT" section that provides the definition of the goal in PDDL format, as so:
+The task or group of specific HTN tasks (i.e. tasks instances) that has to be done (i.e. correctly decomposed) to solve the given problem. Do a chain of thought reasoning about which are the goal HTN task instances. End this block with a "## OUTPUT" section that provides the union of neccesary task instances as so:
 
 ## OUTPUT
 ```
-(AND ; all the following should be done
-   (finalised house1) ; house 1 is done
-   (finalised house2) ; house 2 is done
+(and ; all the following should be done
+   (finish house1) ; house 1 is done
+   (finish house2) ; house 2 is done
 )
 ```
 
@@ -199,8 +199,6 @@ Do a chain of thought reasoning about which is the goal condition. End this bloc
 -----------------------------------------------------
 
 [TASK]
-Here is the task to generate from:
+Here is the task, the specific problem to generate the HTN model for:
 
 {task_desc}
-
-
