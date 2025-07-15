@@ -9,12 +9,12 @@ Each component of NL2Plan framework can be found in ./nl2plan. Specifically, thi
     3. Action Extraction - high-level extraction of actions + descriptions
     4. Action Construction - coverted actions into PDDL format
     5. Task Extraction - build PDDL problem specification
-        
+
 Step 1-4 is concerned with PDDL domain; step 5 involves PDDL problem.
 
 Each step contains a feedback mechanism (either LLM or human). In this case, we chose to do full
 automation and let LLM run a feedback checklist on its outputs. There are also validators found
-in step 4 (action construction) and step 5 (task extraction) for PDDL syntax. 
+in step 4 (action construction) and step 5 (task extraction) for PDDL syntax.
 """
 
 import argparse
@@ -42,6 +42,7 @@ REQUIREMENTS = [
     ":disjunctive-preconditions",
     ":universal-preconditions",
     ":conditional-effects",
+    ":existential-preconditions",
 ]
 
 UNSUPPORTED_KEYWORDS = ["object", "pddl", "lisp"]
@@ -106,7 +107,7 @@ def run_nl2plan(args, domain: str, problem: str):
             task_path="paper_reconstructions/nl2plan/prompts/type_extraction/task.txt",
         )
 
-        types = type_extraction.type_extraction(
+        types, llm_output = type_extraction.type_extraction(
             model=model,
             domain_desc=load_file(
                 f"paper_reconstructions/nl2plan/domains/{domain}/desc.txt"
@@ -128,7 +129,7 @@ def run_nl2plan(args, domain: str, problem: str):
             task_path="paper_reconstructions/nl2plan/prompts/hierarchy_construction/task.txt",
         )
 
-        type_hierarchy = hierarchy_construction.hierarchy_construction(
+        type_hierarchy, llm_output = hierarchy_construction.hierarchy_construction(
             model=model,
             domain_desc=load_file(
                 f"paper_reconstructions/nl2plan/domains/{domain}/desc.txt"
@@ -151,7 +152,7 @@ def run_nl2plan(args, domain: str, problem: str):
             task_path="paper_reconstructions/nl2plan/prompts/action_extraction/task.txt",
         )
 
-        nl_actions = action_extraction.action_extraction(
+        nl_actions, llm_output = action_extraction.action_extraction(
             model=model,
             domain_desc=load_file(
                 f"paper_reconstructions/nl2plan/domains/{domain}/desc.txt"
@@ -188,7 +189,6 @@ def run_nl2plan(args, domain: str, problem: str):
             feedback_prompt=load_file(
                 "paper_reconstructions/nl2plan/prompts/action_construction/feedback.txt"
             ),
-            max_attempts=2,
         )
 
         log += f"{separator}\n"
@@ -218,9 +218,6 @@ def run_nl2plan(args, domain: str, problem: str):
             feedback_prompt=load_file(
                 "paper_reconstructions/nl2plan/prompts/task_extraction/feedback.txt"
             ),
-            error_prompt=load_file(
-                "paper_reconstructions/nl2plan/prompts/task_extraction/error.txt"
-            ),
         )
 
         log += f"{separator}\nSTEP FIVE: TASK EXTRACTION\n\n"
@@ -228,33 +225,19 @@ def run_nl2plan(args, domain: str, problem: str):
         log += f"INITIAL STATES:\n{initial}\n"
         log += f"GOAL STATES:\n{goal}\n"
 
-        predicate_str = "\n".join(
-            [pred["clean"].replace(":", " ; ") for pred in predicates]
-        )
-
-        types = format_types(type_hierarchy)  # retrieve types
-        pruned_types = {
-            name: description
-            for name, description in types.items()
-            if name not in UNSUPPORTED_KEYWORDS
-        }  # remove unsupported words
-
-        # format strings
-        types_str = "\n".join(pruned_types)
-
         # generate PDDL domain and problem file
         pddl_domain = domain_builder.generate_domain(
-            domain=args.domain,
-            requirements=args.requirements,
-            types=types_str,
-            predicates=predicate_str,
+            domain_name=args.domain,
+            # requirements=args.requirements,
+            types=type_hierarchy,
+            predicates=predicates,
             actions=actions,
         )
 
         problem_name = args.domain + "_problem"
         pddl_problem = task_builder.generate_task(
-            domain=args.domain,
-            problem=problem_name,
+            domain_name=args.domain,
+            problem_name=problem_name,
             objects=objects,
             initial=initial,
             goal=goal,
@@ -271,6 +254,14 @@ def run_nl2plan(args, domain: str, problem: str):
             f.write(pddl_domain)
         with open(problem_file, "w") as f:
             f.write(pddl_problem)
+
+        pddl_domain_cleaned = check_parse_domain(file_path=domain_file)
+        pddl_problem_cleaned = check_parse_problem(file_path=problem_file)
+
+        with open(domain_file, "w") as f:
+            f.write(pddl_domain_cleaned)
+        with open(problem_file, "w") as f:
+            f.write(pddl_problem_cleaned)
 
         # run planner
         _, plan = planner.run_fast_downward(
@@ -296,11 +287,11 @@ if __name__ == "__main__":
 
     # load in arguments to run program
     parser = argparse.ArgumentParser(description="NL2Plan")
-    parser.add_argument("--model", type=str, default="gpt-4o-mini")
+    parser.add_argument("--model", type=str, default="o1-mini")
     parser.add_argument("--domain", type=str, choices=DOMAINS, default="blocksworld")
     parser.add_argument("--requirements", type=list[str], default=REQUIREMENTS)
     parser.add_argument("--planner", type=str, default="downward/fast-downward.py")
     args = parser.parse_args()
 
     # run NL2Plan
-    run_nl2plan(args=args, domain="blocksworld", problem="task1")
+    run_nl2plan(args=args, domain="blocksworld", problem="task3")

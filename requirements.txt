@@ -5,6 +5,7 @@
 retry
 pddl
 typing_extensions
+pyyaml
 
 # The following packages are required for the Local LLM execution.
 --extra-index-url https://download.pytorch.org/whl/cu118

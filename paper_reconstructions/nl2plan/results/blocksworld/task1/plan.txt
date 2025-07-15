@@ -1,3 +1,4 @@
-Input error in translate phase.
-
-THIS PLAN FAILED BECAUSE OF THE ACTION EXTRACTION STEP: CONSTRUCTED ONLY 3 ACTIONS NOT SUFFICIENT TO MODEL PROBLEM
+pick_block_from_block blue red (1)
+place_block_on_table blue table1 (1)
+pick_block_from_block red yellow (1)
+place_block_on_block red green (1)

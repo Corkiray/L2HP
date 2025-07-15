@@ -3,135 +3,117 @@
       :typing :negative-preconditions :disjunctive-preconditions :conditional-effects :equality)
 
    (:types 
-      object
-      truck - object
-      plane - object
-      package - object
-      city - object
-      location - object
+      city location package plane truck - object
    )
 
    (:predicates 
-      (package-at ?p - package ?l - location) ;  true if the package ?p is located at location ?l
-      (truck-at ?t - truck ?l - location) ;  true if the truck ?t is located at location ?l
-      (truck-has-space ?t - truck) ;  true if the truck ?t has space to load more packages
-      (truck-holding ?t - truck ?p - package) ;  true if the truck ?t is currently holding package ?p
-      (airport-location ?l - location) ;  true if the location ?l is an airport
-      (plane-at ?p - plane ?l - location) ;  true if the plane ?p is located at location ?l
+      (at ?t - truck ?l - location)
+      (package-at ?p - package ?l - location)
+      (truck-full ?t - truck)
+      (truck-has-package ?t - truck ?p - package)
+      (connected ?l1 - location ?l2 - location)
+      (in-city ?l - location ?c - city)
    )
 
-   (:action Load a package into a truck
+   (:action load_truck
       :parameters (
-         ?p - package
-         ?t - truck
-         ?l - location
+         ?p - package ?t - truck ?l - location
       )
       :precondition
          (and
-             (package-at ?p ?l)
-             (truck-at ?t ?l)
-             (truck-has-space ?t)
+             (at ?t ?l) ; the truck is at the location
+             (package-at ?p ?l) ; the package is at the same location
+             (not (truck-full ?t)) ; the truck is not full
          )
       :effect
          (and
-             (not (package-at ?p ?l))
-             (truck-holding ?t ?p)
+             (not (package-at ?p ?l)) ; the package is no longer at the location
+             (truck-has-package ?t ?p) ; the truck now has the package
          )
    )
 
-   (:action Unload a package from a truck
+   (:action unload_truck
       :parameters (
-         ?p - package
-         ?t - truck
-         ?l - location
+         ?p - package ?t - truck ?l - location
       )
       :precondition
          (and
-             (truck-at ?t ?l)
-             (truck-holding ?t ?p)
+             (at ?t ?l) ; The truck is at the location
+             (truck-has-package ?t ?p) ; The truck has the package
          )
       :effect
          (and
-             (not (truck-holding ?t ?p))
-             (package-at ?p ?l)
+             (not (truck-has-package ?t ?p)) ; The truck no longer has the package
+             (package-at ?p ?l) ; The package is now at the location
          )
    )
 
-   (:action Load a package into an airplane
+   (:action load_airplane
       :parameters (
-         ?p - package
-         ?t - truck
-         ?l - location
+         ?p - package ?t - truck ?l - location
       )
       :precondition
          (and
-             (package-at ?p ?l)
-             (truck-at ?t ?l)
-             (truck-has-space ?t)
+             (package-at ?p ?l) ; The package is at the specified location
+             (at ?t ?l) ; The truck is at the specified location
+             (not (truck-full ?t)) ; The truck is not full
          )
       :effect
          (and
-             (not (package-at ?p ?l))
-             (truck-holding ?t ?p)
+             (not (package-at ?p ?l)) ; The package is no longer at the location
+             (truck-has-package ?t ?p) ; The truck now has the package
          )
    )
 
-   (:action Unload a package from an airplane
+   (:action unload_airplane
       :parameters (
-         ?p - package
-         ?a - plane
-         ?l - location
-         ?t - truck
+         ?p - package ?t - truck ?l - location
       )
       :precondition
          (and
-             (truck-at ?t ?l)               ; The truck is at the unloading location
-             (package-at ?p ?a)             ; The package is currently at the airplane
-             (truck-has-space ?t)           ; The truck has space to load the package
+             (at ?t ?l) ; The truck is at the location
+             (truck-has-package ?t ?p) ; The truck has the package
          )
       :effect
          (and
-             (not (package-at ?p ?a))        ; The package is no longer at the airplane
-             (package-at ?p ?l)              ; The package is now at the unloading location
-             (truck-holding ?t ?p)           ; The truck is now holding the package
+             (not (truck-has-package ?t ?p)) ; The truck no longer has the package
+             (package-at ?p ?l) ; The package is now at the location
          )
    )
 
-   (:action Drive a truck from one location to another in a city
+   (:action drive_truck
       :parameters (
-         ?t - truck
-         ?l1 - location
-         ?l2 - location
-         ?c - city
+         ?t - truck ?l1 ?l2 - location ?c - city
       )
       :precondition
          (and
-             (truck-at ?t ?l1)
-             (truck-has-space ?t)
+             (at ?t ?l1) ; The truck is at the starting location
+             (connected ?l1 ?l2) ; The starting location is connected to the destination location
+             (in-city ?l1 ?c) ; The starting location is in the specified city
+             (in-city ?l2 ?c) ; The destination location is in the specified city
          )
       :effect
          (and
-             (not (truck-at ?t ?l1))
-             (truck-at ?t ?l2)
+             (not (at ?t ?l1)) ; The truck is no longer at the starting location
+             (at ?t ?l2) ; The truck is now at the destination location
          )
    )
 
-   (:action Fly an airplane from one city to another
+   (:action fly_airplane
       :parameters (
-         ?plane - plane
-         ?from - location
-         ?to - location
+         ?t - truck ?l1 ?l2 - location ?c1 ?c2 - city
       )
       :precondition
          (and
-             (plane-at ?plane ?from)
-             (airport-location ?from)
-             (airport-location ?to)
+             (at ?t ?l1) ; The truck is at the departure airport
+             (connected ?l1 ?l2) ; The departure and arrival airports are connected
+             (in-city ?l1 ?c1) ; The departure airport is in city c1
+             (in-city ?l2 ?c2) ; The arrival airport is in city c2
          )
       :effect
          (and
-             (not (plane-at ?plane ?from))
-             (plane-at ?plane ?to)
+             (not (at ?t ?l1)) ; The truck is no longer at the departure airport
+             (at ?t ?l2) ; The truck is now at the arrival airport
          )
    )
 )

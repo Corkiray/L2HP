@@ -1,15 +1,30 @@
 """
-This file contains classes of PDDL types
+L2P PDDL Type and Data Structure Definitions
+
+This module defines core types and data classes used for representing components of PDDL
+domains, problems, and plans. These include structured representations for predicates, actions,
+functions, domain/task metadata, and parameterized object lists.
 """
 
-from typing import TypedDict, NewType, List, Optional
 from collections import OrderedDict
 from dataclasses import dataclass
+from typing import TypedDict, NewType, Optional
 
 ParameterList = NewType(
     "ParameterList", OrderedDict[str, str]
 )  # {param_name: param_type}
 ObjectList = NewType("ObjectList", dict[str, str])  # {obj_name: obj_type}
+
+
+class PDDLType(TypedDict):
+    name: str
+    parent: str
+    desc: str
+
+
+class Constant(TypedDict):
+    name: str
+    type: str
 
 
 class Predicate(TypedDict):
@@ -20,8 +35,17 @@ class Predicate(TypedDict):
     clean: str
 
 
+class Function(TypedDict):
+    name: str
+    desc: Optional[str]
+    raw: str
+    params: ParameterList
+    clean: str
+
+
 class Action(TypedDict):
     name: str
+    desc: Optional[str]
     raw: str
     params: ParameterList
     preconditions: str
@@ -34,10 +58,12 @@ class DomainDetails:
     name: str
     domain_desc: str
     domain_pddl: str
-    types: str
     requirements: list[str]
-    predicates: List[Predicate]  # List of Predicate objects
-    actions: List[Action]  # List of Action objects
+    types: dict[str, str] | list[dict[str, str]]
+    constants: dict[str, str]
+    predicates: list[Predicate]  # List of Predicate objects
+    functions: list[Function]
+    actions: list[Action]  # List of Action objects
 
 
 # Problem details data class
@@ -54,6 +80,8 @@ class ProblemDetails:
 # Plan details data class
 @dataclass
 class PlanDetails:
+    domain_pddl: str
+    problem_pddl: str
     plan_pddl: str
     plan_nl: str
 

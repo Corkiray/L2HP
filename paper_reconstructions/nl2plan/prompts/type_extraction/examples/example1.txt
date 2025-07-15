@@ -76,9 +76,8 @@ Then, I also want to add the new general worker types:
 - administrator: A type of worker who can create orders.
 ```
 
-End your final answer starting with "## OUTPUT" and then re-iterate an updated version the Python dictionary pair '{'name':'description'}' as so:
-
-## OUTPUT
+### TYPES
+```
 {
     "location": "Locations can be visited and travelled between.",
     "house": "Constructed by the company. Are a type of location.",
@@ -89,3 +88,4 @@ End your final answer starting with "## OUTPUT" and then re-iterate an updated v
     "general_worker": "A type of worker who can perform a variety of jobs based on orders.",
     "administrator": "A type of worker who can create orders."
 }
+```

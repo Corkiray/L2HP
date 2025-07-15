@@ -1,143 +1,131 @@
 STEP ONE: TYPE EXTRACTION
 
-{'block': 'The primary object that the robot arm interacts with. Blocks can be moved, stacked, or placed on the table.', 'table': 'The surface on which blocks can be placed. It serves as the base level for stacking blocks.', 'movable_object': 'A meta-type that includes any object that can be moved by the robot arm. In this case, it includes blocks.', 'surface': 'A meta-type that includes any object that can serve as a base for placing other objects. In this case, it includes the table.'}
+{'location': 'Locations where blocks can be placed, including the table and atop other blocks.', 'block': 'A subtype of location. Blocks that can be manipulated by the robot and can serve as locations for other blocks.'}
 
 --------------------
 STEP TWO: HIERARCHY CONSTRUCTION
 
-{'object': 'Object is always root, everything is an object', 'children': [{'movable_object': 'A type of object that can be moved.', 'children': [{'block': 'A type of movable_object.', 'children': []}]}, {'surface': 'A type of object that can serve as a base.', 'children': [{'table': 'A type of surface.', 'children': []}]}]}
+[{'location': 'Locations where blocks can be placed, including the table and atop other blocks.', 'children': [{'table': 'A specific type of location where blocks can be placed.', 'children': []}]}, {'block': 'Blocks that can be manipulated by the robot and can serve as locations for other blocks.', 'children': []}]
 
 --------------------
 STEP THREE: ACTION EXTRACTION
 
-{'pick_up_block': 'The robot arm picks up a block from a surface. The block must be clear (i.e., no other block is on top of it) and the robot arm must be free (not holding another block). Example: The robot arm picks up block_1 from the table.', 'place_block_on_table': 'The robot arm places a block onto the table. The robot arm must be holding the block, and the table must have space for the block. Example: The robot arm places block_2 on the table.', 'place_block_on_block': 'The robot arm places a block onto another block. The robot arm must be holding the block, and the target block must be clear (i.e., no other block is on top of it). Example: The robot arm places block_3 on block_4.'}
+{'pick_from_table': 'The robot arm picks a block from the table. Requires that the block is on the table and not under another block. Example: The robot picks block_A from the table.', 'pick_from_block': 'The robot arm picks a block from atop another block. Requires that the target block is the topmost block on a stack. Example: The robot picks block_B from block_A.', 'place_on_table': 'The robot arm places a held block onto the table. Requires that the robot is holding a block. Example: The robot places block_C onto the table.', 'place_on_block': 'The robot arm places a held block atop another block. Requires that the destination block is not covered by another block. Example: The robot places block_D onto block_E.'}
 
 --------------------
 STEP FOUR: ACTION CONSTRUCTION
 
 ACTIONS:
-{'name': 'pick_up_block', 'params': OrderedDict([('?r', 'object'), ('?b', 'block'), ('?s', 'surface')]), 'preconditions': '(and\n    (is_robot_arm ?r) ; The object ?r is a robot arm\n    (clear ?b) ; The block ?b is clear (no block on top of it)\n    (arm_free ?r) ; The robot arm ?r is free (not holding any block)\n    (on ?b ?s) ; The block ?b is on the surface ?s\n)', 'effects': '(and\n    (not (on ?b ?s)) ; The block ?b is no longer on the surface ?s\n    (holding ?r ?b) ; The robot arm ?r is now holding the block ?b\n    (not (arm_free ?r)) ; The robot arm ?r is no longer free\n)'}
-{'name': 'place_block_on_table', 'params': OrderedDict([('?r', 'object'), ('?b', 'block'), ('?t', 'table')]), 'preconditions': '(and\n    (is_robot_arm ?r) ; The object ?r is a robot arm\n    (holding ?r ?b) ; The robot arm ?r is holding the block ?b\n    (table_space_available ?t) ; The table ?t has space available for the block\n)', 'effects': '(and\n    (not (holding ?r ?b)) ; The robot arm ?r is no longer holding the block ?b\n    (on ?b ?t) ; The block ?b is now on the table ?t\n    (arm_free ?r) ; The robot arm ?r is now free\n)'}
-{'name': 'place_block_on_block', 'params': OrderedDict([('?r', 'object'), ('?b1', 'block'), ('?b2', 'block')]), 'preconditions': '(and\n    (is_robot_arm ?r) ; The object ?r is a robot arm\n    (holding ?r ?b1) ; The robot arm ?r is holding block ?b1\n    (clear ?b2) ; The block ?b2 is clear, i.e., no other block is on top of it\n)', 'effects': '(and\n    (not (holding ?r ?b1)) ; The robot arm ?r is no longer holding block ?b1\n    (on_block ?b1 ?b2) ; Block ?b1 is now on block ?b2\n    (clear ?b1) ; Block ?b1 is clear after being placed\n    (not (clear ?b2)) ; Block ?b2 is no longer clear after ?b1 is placed on it\n)'}
+{'name': 'pick_from_table', 'params': OrderedDict({'?b': 'block'}), 'preconditions': "(and\n    (on-table ?b) ; The block is on the table\n    (clear ?b) ; No block is on top of the block\n    (hand-empty) ; The robot's hand is free\n)", 'effects': '(and\n    (not (on-table ?b)) ; The block is no longer on the table\n    (not (hand-empty)) ; The robot is now holding a block\n    (holding ?b) ; The robot is holding the block\n)'}
+{'name': 'pick_from_block', 'params': OrderedDict({'?b': 'block', '?from': 'block'}), 'preconditions': "(and\n    (hand-empty) ; The robot's hand is empty\n    (clear ?b) ; The block ?b has nothing on top\n    (on ?b ?from) ; The block ?b is on block ?from\n)", 'effects': "(and\n    (holding ?b) ; The robot is now holding block ?b\n    (not (hand-empty)) ; The robot's hand is no longer empty\n    (not (on ?b ?from)) ; block ?b is no longer on block ?from\n    (clear ?from) ; block ?from is now clear\n)"}
+{'name': 'place_on_table', 'params': OrderedDict({'?b': 'block'}), 'preconditions': '(and\n    (holding ?b) ; The robot is holding block ?b\n)', 'effects': "(and\n    (not (holding ?b)) ; The robot is no longer holding block ?b\n    (on-table ?b) ; The block ?b is now on the table\n    (hand-empty) ; The robot's hand is now empty\n)"}
+{'name': 'place_on_block', 'params': OrderedDict({'?b': 'block', '?dest': 'block'}), 'preconditions': '(and\n    (holding ?b) ; The robot is holding block ?b\n    (clear ?dest) ; The destination block ?dest is clear\n)', 'effects': "(and\n    (not (holding ?b)) ; The robot is no longer holding block ?b\n    (hand-empty) ; The robot's hand is now empty\n    (on ?b ?dest) ; Block ?b is now on ?dest\n    (not (clear ?dest)) ; The destination block ?dest is no longer clear\n    (clear ?b) ; The placed block ?b is now clear\n)"}
 
 PREDICATES:
-{'name': 'is_robot_arm', 'desc': 'true if the object ?r is a robot arm', 'raw': '(is_robot_arm ?r - object): true if the object ?r is a robot arm', 'params': OrderedDict([('?r', 'object')]), 'clean': '(is_robot_arm ?r - object): true if the object ?r is a robot arm'}
-{'name': 'clear', 'desc': 'true if no other block is on top of block ?b', 'raw': '(clear ?b - block): true if no other block is on top of block ?b', 'params': OrderedDict([('?b', 'block')]), 'clean': '(clear ?b - block): true if no other block is on top of block ?b'}
-{'name': 'arm_free', 'desc': 'true if the robot arm ?r is not holding any block', 'raw': '(arm_free ?r - object): true if the robot arm ?r is not holding any block', 'params': OrderedDict([('?r', 'object')]), 'clean': '(arm_free ?r - object): true if the robot arm ?r is not holding any block'}
-{'name': 'on', 'desc': 'true if block ?b is on surface ?s', 'raw': '(on ?b - block ?s - surface): true if block ?b is on surface ?s', 'params': OrderedDict([('?b', 'block'), ('?s', 'surface')]), 'clean': '(on ?b - block ?s - surface): true if block ?b is on surface ?s'}
-{'name': 'holding', 'desc': 'true if the robot arm ?r is holding block ?b', 'raw': '(holding ?r - object ?b - block): true if the robot arm ?r is holding block ?b', 'params': OrderedDict([('?r', 'object'), ('?b', 'block')]), 'clean': '(holding ?r - object ?b - block): true if the robot arm ?r is holding block ?b'}
-{'name': 'table_space_available', 'desc': 'true if the table ?t has space available for a block', 'raw': '(table_space_available ?t - table): true if the table ?t has space available for a block', 'params': OrderedDict([('?t', 'table')]), 'clean': '(table_space_available ?t - table): true if the table ?t has space available for a block'}
-{'name': 'on_block', 'desc': 'true if block ?b1 is on block ?b2', 'raw': '(on_block ?b1 - block ?b2 - block): true if block ?b1 is on block ?b', 'params': OrderedDict([('?b1', 'block'), ('?b2', 'block')]), 'clean': '(on_block ?b1 - block ?b2 - block): true if block ?b1 is on block ?b2'}
+{'name': 'on-table', 'desc': 'true if the block ?b is placed on the table', 'raw': '- (on-table ?b - block): true if the block ?b is placed on the table', 'params': OrderedDict({'?b': 'block'}), 'clean': '(on-table ?b - block)'}
+{'name': 'clear', 'desc': 'true if no block is on top of block ?b', 'raw': '- (clear ?b - block): true if no block is on top of block ?b', 'params': OrderedDict({'?b': 'block'}), 'clean': '(clear ?b - block)'}
+{'name': 'holding', 'desc': 'true if the robot is currently holding block ?b', 'raw': '- (holding ?b - block): true if the robot is currently holding block ?b', 'params': OrderedDict({'?b': 'block'}), 'clean': '(holding ?b - block)'}
+{'name': 'hand-empty', 'desc': "true if the robot's hand is free and not holding any block", 'raw': "- (hand-empty): true if the robot's hand is free and not holding any block", 'params': OrderedDict(), 'clean': '(hand-empty )'}
+{'name': 'on', 'desc': 'block ?b1 is on top of block ?b2', 'raw': "- (on ?b1 - block ?b2 - block): 'block ?b1 is on top of block ?b2'", 'params': OrderedDict({'?b1': 'block', '?b2': 'block'}), 'clean': '(on ?b1 - block ?b2 - block)'}
 
 --------------------
 STEP FIVE: TASK EXTRACTION
 
 OBJECTS:
-blue - block
-red - block
-green - block
-yellow - block
-table1 - table
-robot_arm1 - object
+{'red': 'block', 'green': 'block', 'blue': 'block', 'yellow': 'block', 'tbl': 'table'}
 INITIAL STATES:
-(is_robot_arm robot_arm1)
-(clear blue)
-(clear green)
-(arm_free robot_arm1)
-(on blue red)
-(on green yellow)
-(on yellow table1)
-(table_space_available table1)
+[{'pred_name': 'on-table', 'params': ['red'], 'neg': False}, {'pred_name': 'on', 'params': ['blue', 'red'], 'neg': False}, {'pred_name': 'on-table', 'params': ['yellow'], 'neg': False}, {'pred_name': 'on', 'params': ['green', 'yellow'], 'neg': False}, {'pred_name': 'clear', 'params': ['blue'], 'neg': False}, {'pred_name': 'clear', 'params': ['green'], 'neg': False}, {'pred_name': 'hand-empty', 'params': [], 'neg': False}]
 GOAL STATES:
-(AND 
-   (on green red) 
-   (on blue green) 
-   (on yellow blue) 
-   (clear yellow) 
-)
+[{'pred_name': 'on-table', 'params': ['red'], 'neg': False}, {'pred_name': 'on', 'params': ['green', 'red'], 'neg': False}, {'pred_name': 'on', 'params': ['blue', 'green'], 'neg': False}, {'pred_name': 'on', 'params': ['yellow', 'blue'], 'neg': False}, {'pred_name': 'clear', 'params': ['yellow'], 'neg': False}]
 
 
 PDDL DOMAIN:
 (define (domain blocksworld)
    (:requirements
-      :strips :typing :equality :negative-preconditions :disjunctive-preconditions :universal-preconditions :conditional-effects)
+      :negative-preconditions :strips :typing)
 
    (:types 
-      movable_object - object
-      block - movable_object
-      surface - object
-      table - surface
+      block
+      table - location
    )
 
    (:predicates 
-      (is_robot_arm ?r - object) ;  true if the object ?r is a robot arm
-      (clear ?b - block) ;  true if no other block is on top of block ?b
-      (arm_free ?r - object) ;  true if the robot arm ?r is not holding any block
-      (on ?b - block ?s - surface) ;  true if block ?b is on surface ?s
-      (holding ?r - object ?b - block) ;  true if the robot arm ?r is holding block ?b
-      (table_space_available ?t - table) ;  true if the table ?t has space available for a block
-      (on_block ?b1 - block ?b2 - block) ;  true if block ?b1 is on block ?b2
+      (on-table ?b - block)
+      (clear ?b - block)
+      (holding ?b - block)
+      (hand-empty )
+      (on ?b1 - block ?b2 - block)
    )
 
-   (:action pick_up_block
+   (:action pick_from_table
       :parameters (
-         ?r - object
          ?b - block
-         ?s - surface
       )
       :precondition
          (and
-             (is_robot_arm ?r) ; The object ?r is a robot arm
-             (clear ?b) ; The block ?b is clear (no block on top of it)
-             (arm_free ?r) ; The robot arm ?r is free (not holding any block)
-             (on ?b ?s) ; The block ?b is on the surface ?s
+             (on-table ?b) ; The block is on the table
+             (clear ?b) ; No block is on top of the block
+             (hand-empty) ; The robot's hand is free
          )
       :effect
          (and
-             (not (on ?b ?s)) ; The block ?b is no longer on the surface ?s
-             (holding ?r ?b) ; The robot arm ?r is now holding the block ?b
-             (not (arm_free ?r)) ; The robot arm ?r is no longer free
+             (not (on-table ?b)) ; The block is no longer on the table
+             (not (hand-empty)) ; The robot is now holding a block
+             (holding ?b) ; The robot is holding the block
          )
    )
 
-   (:action place_block_on_table
+   (:action pick_from_block
       :parameters (
-         ?r - object
+         ?b ?from - block
+      )
+      :precondition
+         (and
+             (hand-empty) ; The robot's hand is empty
+             (clear ?b) ; The block ?b has nothing on top
+             (on ?b ?from) ; The block ?b is on block ?from
+         )
+      :effect
+         (and
+             (holding ?b) ; The robot is now holding block ?b
+             (not (hand-empty)) ; The robot's hand is no longer empty
+             (not (on ?b ?from)) ; block ?b is no longer on block ?from
+             (clear ?from) ; block ?from is now clear
+         )
+   )
+
+   (:action place_on_table
+      :parameters (
          ?b - block
-         ?t - table
       )
       :precondition
          (and
-             (is_robot_arm ?r) ; The object ?r is a robot arm
-             (holding ?r ?b) ; The robot arm ?r is holding the block ?b
-             (table_space_available ?t) ; The table ?t has space available for the block
+             (holding ?b) ; The robot is holding block ?b
          )
       :effect
          (and
-             (not (holding ?r ?b)) ; The robot arm ?r is no longer holding the block ?b
-             (on ?b ?t) ; The block ?b is now on the table ?t
-             (arm_free ?r) ; The robot arm ?r is now free
+             (not (holding ?b)) ; The robot is no longer holding block ?b
+             (on-table ?b) ; The block ?b is now on the table
+             (hand-empty) ; The robot's hand is now empty
          )
    )
 
-   (:action place_block_on_block
+   (:action place_on_block
       :parameters (
-         ?r - object
-         ?b1 - block
-         ?b2 - block
+         ?b ?dest - block
       )
       :precondition
          (and
-             (is_robot_arm ?r) ; The object ?r is a robot arm
-             (holding ?r ?b1) ; The robot arm ?r is holding block ?b1
-             (clear ?b2) ; The block ?b2 is clear, i.e., no other block is on top of it
+             (holding ?b) ; The robot is holding block ?b
+             (clear ?dest) ; The destination block ?dest is clear
          )
       :effect
          (and
-             (not (holding ?r ?b1)) ; The robot arm ?r is no longer holding block ?b1
-             (on_block ?b1 ?b2) ; Block ?b1 is now on block ?b2
-             (clear ?b1) ; Block ?b1 is clear after being placed
-             (not (clear ?b2)) ; Block ?b2 is no longer clear after ?b1 is placed on it
+             (not (holding ?b)) ; The robot is no longer holding block ?b
+             (hand-empty) ; The robot's hand is now empty
+             (on ?b ?dest) ; Block ?b is now on ?dest
+             (not (clear ?dest)) ; The destination block ?dest is no longer clear
+             (clear ?b) ; The placed block ?b is now clear
          )
    )
 )
@@ -148,32 +136,30 @@ PDDL PROBLEM:
    (:domain blocksworld)
 
    (:objects 
-      blue - block
       red - block
       green - block
+      blue - block
       yellow - block
-      table1 - table
-      robot_arm1 - object
+      tbl - table
    )
 
    (:init
-      (is_robot_arm robot_arm1)
+      (on-table red)
+      (on blue red)
+      (on-table yellow)
+      (on green yellow)
       (clear blue)
       (clear green)
-      (arm_free robot_arm1)
-      (on blue red)
-      (on green yellow)
-      (on yellow table1)
-      (table_space_available table1)
+      (hand-empty )
    )
 
    (:goal
       (and 
-         (on green red) 
-         (on blue green) 
-         (on yellow blue) 
-         (clear yellow) 
+         (on-table red)
+         (on green red)
+         (on blue green)
+         (on yellow blue)
+         (clear yellow)
       )
    )
-
 )

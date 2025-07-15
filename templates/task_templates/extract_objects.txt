@@ -1,8 +1,0 @@
-End your final answer starting with "### OBJECTS" containg the object types with ''' ''' comment blocks in PDDL as so:
-
-### OBJECTS
-```
-object1 - type_1
-object2 - type_2
-object3 - type_1
-```

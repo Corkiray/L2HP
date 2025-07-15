@@ -3,17 +3,16 @@ Paper: "Structured, flexible, and robust: benchmarking and improving large langu
 Source code: https://github.com/collinskatie/structured_flexible_and_robust
 Run: python3 -m paper_reconstructions.p+s.main
 
-This framework (Part II of paper) utilizes "Language-of-Thought" (LOT) prompting where thinking operates like formal language. 
-Mental representations are structured symbolically with rules for logical reasoning and problem-solving. L2P follows this paradigm. 
+This framework (Part II of paper) utilizes "Language-of-Thought" (LOT) prompting where thinking operates like formal language.
+Mental representations are structured symbolically with rules for logical reasoning and problem-solving. L2P follows this paradigm.
 In this paper, they are tasking the LLM to translate natural language initial and goal states to PDDL via few shot prompting.
 """
 
 from l2p import *
-from itertools import combinations
 
 
 def run_parse_and_solve(
-    model: LLM,
+    model: BaseLLM,
     prompt_initial: str,
     prompt_goal: str,
     problem_path: str,
@@ -24,7 +23,7 @@ def run_parse_and_solve(
     Main framework of P+S - translate initial and goal states to PDDL from NL
 
     Args:
-        model (LLM): LLM model to run inference
+        model (BaseLLM): LLM model to run inference
         prompt_initial (str): prompt for translating initial state
         prompt_goal (str): prompt for translating goal state
         problem_path (str): directory of specific problem
@@ -32,33 +31,25 @@ def run_parse_and_solve(
         objects (dict[str,str]): objects of task file
     """
 
+    task_builder = TaskBuilder()
+
     # extract initial states
-    initial_states, _ = task_builder.extract_initial_state(
+    initial_states, _, _ = task_builder.formalize_initial_state(
         model=model, problem_desc="", prompt_template=prompt_initial, objects=""
     )
 
     # extract goal states
-    goal_states, _ = task_builder.extract_goal_state(
+    goal_states, _, _ = task_builder.formalize_goal_state(
         model=model, problem_desc="", prompt_template=prompt_goal, objects=""
     )
-
-    # convert Python components to string
-    objects_str = task_builder.format_objects(objects)
-    initial_state_str = task_builder.format_initial(initial_states)
-    goal_state_str = task_builder.format_goal(goal_states)
-
-    # insert `(noteq)` predicate  manually (due to domain from paper)
-    objects = objects_str.split("\n")
-    for obj1, obj2 in combinations(objects, 2):  # create all combinations
-        initial_state_str += f"\n(noteq {obj1} {obj2})"
 
     # take components and generate PDDL task format
     pddl_problem = task_builder.generate_task(
         "simple-blocks",
         problem_name,
-        objects=objects_str,
-        initial=initial_state_str,
-        goal=goal_state_str,
+        objects=objects,
+        initial=initial_states,
+        goal=goal_states,
     )
 
     # write the problem file to respective directory
@@ -208,8 +199,8 @@ if __name__ == "__main__":
 
     # load in base templates
     ROLE = "Your task is to convert the natural language states into PDDL initial state predicates.\n\n"
-    ROLE_INITIAL = ROLE + load_file("templates/task_templates/extract_initial.txt")
-    ROLE_GOAL = ROLE + load_file("templates/task_templates/extract_goal.txt")
+    ROLE_INITIAL = ROLE + load_file("templates/task_templates/formalize_initial.txt")
+    ROLE_GOAL = ROLE + load_file("templates/task_templates/formalize_goal.txt")
     DOMAIN_DIR = "paper_reconstructions/p+s/domain.pddl"
 
     # run problem sets

@@ -164,6 +164,8 @@ tests/main.py
 tests/parse.py
 data/
 tests/tests.py
+templates/temp
+tests/test_llm_dm
 
 # paper reconstructions to ignore
 paper_reconstructions/llm+dp/
@@ -182,3 +184,10 @@ pandaPIparser/
 
 # Experiments
 results/
+offline_packages
+config.py
+l2p/llm/vllm.py
+run_inference.sh
+test.py
+test.txt
+test.pddl

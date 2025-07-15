@@ -6,8 +6,8 @@ Run: python3 -m paper_reconstructions.llm+p.main
 Assumes the following:
     1. NL task description
     2. Ground-truth PDDL domain
-    
-This library only focuses on model generation, so it is not concerned with the other phase of LLM+P: LLM translating PDDL plans to NL. 
+
+This library only focuses on model generation, so it is not concerned with the other phase of LLM+P: LLM translating PDDL plans to NL.
 This module contains all domains from LLM+P code (except Manipulation domain as L2P currently does not support cost actions).
 Experimentation recreation was only done on first four problems of each domain. Example results found in `./domains/blocksworld/results`
 """
@@ -31,7 +31,7 @@ DOMAINS = [
 def create_llm_ic_pddl_prompt(task_nl, domain_pddl, context):
     # (LM+P), create the problem PDDL given the context
 
-    context_nl, context_pddl, context_sol = context
+    context_nl, context_pddl, _ = context
 
     prompt = (
         f"I want you to solve planning problems. "
@@ -43,7 +43,7 @@ def create_llm_ic_pddl_prompt(task_nl, domain_pddl, context):
     )
 
     # add in L2P default format prompt
-    prompt += "\n\n" + load_file("templates/task_templates/extract_task.txt")
+    prompt += "\n\n" + load_file("templates/task_templates/formalize_task.txt")
     return prompt
 
 
@@ -76,24 +76,19 @@ def llm_ic_pddl_planner(args, problem_name):
     prompt = create_llm_ic_pddl_prompt(task_nl, domain_pddl, context)
 
     # query LLM using L2P
-    objects, initial, goal, llm_response = task_builder.extract_task(
+    objects, initial, goal, _, _ = task_builder.formalize_task(
         model=model,
         problem_desc="",
         prompt_template=prompt,
     )
 
-    # construct PDDL components into PDDL problem file
-    object_str = task_builder.format_objects(objects)
-    initial_state_str = task_builder.format_initial(initial)
-    goal_state_str = task_builder.format_goal(goal)
-
     # generate proper PDDL structure
     pddl_problem = task_builder.generate_task(
-        domain.name,
-        problem_name,
-        object_str,
-        initial_state_str,
-        goal_state_str,
+        domain_name=domain.name,
+        problem_name=problem_name,
+        objects=objects,
+        initial=initial,
+        goal=goal,
     )
 
     # write generated pddl into folder
@@ -119,11 +114,13 @@ if __name__ == "__main__":
 
     # load in arguments to run program
     parser = argparse.ArgumentParser(description="LLM+P")
-    parser.add_argument("--model", type=str, default="gpt-4o-mini")
-    parser.add_argument("--domain", type=str, choices=DOMAINS, default="blocksworld")
-    parser.add_argument("--task", type=int, default=0)  # task to run
+    parser.add_argument(
+        "--model", type=str, default="gpt-4o-mini"
+    )  # experiment originally ran on o3-mini
+    parser.add_argument("--domain", type=str, choices=DOMAINS, default="termes")
+    parser.add_argument("--task", type=int, default=3)  # task to run
     parser.add_argument("--planner", type=str, default="downward/fast-downward.py")
     args = parser.parse_args()
 
     # run LLM+P method
-    llm_ic_pddl_planner(args=args, problem_name="blocksworld_problem")
+    llm_ic_pddl_planner(args=args, problem_name="termes_problem")
