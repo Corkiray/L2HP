@@ -15,7 +15,7 @@ torchaudio
 transformers==4.46.0
 accelerate==1.6.0
 
-# The following packages are required for the GeminiApi usage.ç
+# The following packages are required for the GeminiApi usage.
 google-generativeai
 
 # The following packages are required for the unified-planning interface.
