@@ -9,7 +9,7 @@ from typing import Tuple
 # from l2p.utils.pddl_parser import prune_predicates, format_types
 # from tests.mock_llm import MockLLM
 
-from l2p.llm_builder import LLM
+from l2p.llm.base import BaseLLM as LLM
 from l2p.model_builder import ModelBuilder
 from l2p.planner_builder import Planner
 
@@ -49,6 +49,7 @@ class NL2HTNAgent:
                 task_desc=task_desc,
                 prompt_template=self.prompt_template,
             )
+            print(self.builder.get_domain())
         except Exception as e:
             return f"Error extracting domain and problem: {e}\n" + traceback.format_exc(), 1
         finally:

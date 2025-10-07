@@ -15,6 +15,7 @@ class MockLLM(BaseLLM):
         return self.output
 
     def reset_tokens(self):
-        if self.current_index >= len(self.responses):
-            self.current_index = 0    
-    
+        """
+        Placeholder for resetting tokens; not needed for testing.
+        """
+        pass

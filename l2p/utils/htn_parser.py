@@ -94,7 +94,9 @@ def parse_method(text: str, method_name: str) -> HPDLMethod:
     Returns:
         Method: The parsed method.
     """
-    parameters, _ = parse_params(text)
+    
+    clean_text = clean_markdown_comments(text)
+    parameters, _ = parse_params(clean_text)
     try:
         task = (
             text.split("Method Task")[1]
@@ -272,3 +274,24 @@ def parse_list_of_predicates(text: str) -> list[Predicate]:
         )
 
     return new_predicates
+
+
+def parse_goal_htn(llm_output: str) -> list[dict[str, str]]:
+    """
+    Extracts goal (PDDL-goal) from markdown text and returns it as a string
+
+    Parameters:
+        llm_output (str): raw LLM output
+
+    Returns:
+        states (list[dict[str,str]]): list of goal states in dictionaries
+    """
+    
+    goal_section = extract_section_by_name(llm_output, "GOAL")
+    goal_output = extract_section_by_name(goal_section, "OUTPUT", level=2)
+    goal_combined = combine_blocks(goal_output)
+    goal_clean = remove_comments(goal_combined)
+    goal_parsed = parse_pddl(f"({goal_clean})")
+    goal_formatted = parse_task_states(goal_parsed[0])
+      
+    return goal_formatted

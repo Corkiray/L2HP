@@ -1,7 +1,8 @@
 """
 This file contains collection of functions for extracting/parsing markdown datastructures from LLM output
 """
-import re
+import re, ast
+from .pddl_parser import combine_blocks, parse_pddl, remove_comments, parse_task_states
 
 def extract_bracket_block(text: str, block_name: str) -> str:
     """
@@ -101,3 +102,100 @@ def substract_logical_expression(text: str) -> str:
     else:
         raise ValueError("Could not find the logical expression in the LLM output. Provide the entire response, including all headings even if some are unchanged.")
 
+
+def convert_to_dict(llm_response: str) -> dict[str, str]:
+
+    """Converts string into Python dictionary format."""
+
+    dict_pattern = re.compile(
+
+        r"{.*}", re.DOTALL
+
+    )  # regular expression to find the JSON-like dictionary structure
+
+    match = dict_pattern.search(
+
+        llm_response
+
+    )  # search for the pattern in the llm_response
+
+
+
+    # safely evaluate the string to convert it into a Python dictionary
+
+    if match:
+
+        dict_str = match.group(0)
+
+        try:
+
+            dict = ast.literal_eval(dict_str)
+
+            return dict
+
+        except Exception as e:
+
+            print(f"Error parsing dictionary: {e}")
+
+            return None
+
+    else:
+
+        print("No dictionary found in the llm_response.")
+
+        return None
+    
+    
+    
+def parse_objects_md(llm_output: str) -> dict[str, str]:
+    """
+    Extract objects from markdown text and returns dictionary string pairs object(name, type)
+
+    Args:
+        llm_output (str): raw LLM output
+        types (dict[str,str]): WILL BE USED FOR CHECK ERROR RAISES
+        predicates (list[Predicate]): WILL BE USED FOR CHECK ERROR RAISES
+
+    Returns:
+        objects_parsed (dict[str,str]): PDDL task objects
+    """
+
+    objects_section = extract_section_by_name(llm_output, "OBJECTS")
+    objects_output = extract_section_by_name(objects_section, "OUTPUT", level=2)
+    objects_combined = combine_blocks(objects_output)
+    objects_clean = remove_comments(objects_combined)
+
+    objects_parsed = {
+        obj.split(" - ")[0].strip(" `"): obj.split(" - ")[1].strip(" `")
+        for obj in objects_clean.split("\n")
+        if obj.strip()
+    }
+
+    return objects_parsed
+
+
+def parse_initial_md(llm_output: str) -> list[dict[str, str]]:
+    """
+    Extracts state (PDDL-init) from markdown text and returns it as a list of dict strings
+
+    Parameters:
+        llm_output (str): raw LLM output
+
+    Returns:
+        states (list[dict[str,str]]): list of initial states in dictionaries
+    """
+    initial_section = extract_section_by_name(llm_output, "INITIAL")
+    initial_output = extract_section_by_name(initial_section, "OUTPUT", level=2)
+    initial_combined = combine_blocks(initial_output)
+    initial_clean = remove_comments(initial_combined)
+    initial_parsed = parse_pddl(f"({initial_clean})")
+    initial_formatted = parse_task_states(initial_parsed)
+    
+    return initial_formatted
+
+
+def clean_markdown_comments(text: str) -> str:
+    """
+    Removes HTML-style comments (<!-- ... -->) from markdown text.
+    """
+    return re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)

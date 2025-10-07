@@ -1,3 +1,5 @@
+# ------------------ Original l2p ignores ------------------
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -175,6 +177,19 @@ paper_reconstructions/llm+consistency/
 .DS_Store
 sas_plan
 
+# Experiments
+offline_packages
+config.py
+l2p/llm/vllm.py
+run_inference.sh
+test.py
+test.txt
+test.pddl
+
+# ------------------ additional l2hp ignores ------------------
+.env
+.github/
+
 #secrets
 mySecrets.py
 
@@ -183,11 +198,6 @@ downward/
 pandaPIparser/
 
 # Experiments
+playground/
 results/
-offline_packages
-config.py
-l2p/llm/vllm.py
-run_inference.sh
-test.py
-test.txt
-test.pddl
+slurm*

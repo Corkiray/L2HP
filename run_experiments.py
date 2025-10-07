@@ -2,17 +2,19 @@
 This file is used to run experiments with different agents and datasets.
 """
 import os, json
+import sys
+from time import sleep
 from l2p.dataset_builder import PlanBenchDataset
 from l2p.planner_builder import UP_Planner
 from l2p.model_builder import ModelBuilder
-from l2p.llm_builder import GeminiClient
+from l2p.llm.genai import GenAIClient as LLM
 from agents.nl2htn import NL2HTNAgent
 from mySecrets import GeminiApi3_token as token
 from unified_planning.environment import get_environment
-
+from tests.mock_llm import MockLLM
 
 # ====== Configurations, Constants, Initializations and Loadings ======
-mode = "hddl"  # or "hddl"
+mode = "hddl"  # or "pddl"
 
 get_environment().error_used_name = False  # Allow same names for different elements
 
@@ -31,13 +33,15 @@ elif mode == "hddl":
     isHTN = True
 
 
-llm = GeminiClient('gemini-2.0-flash', api_key=token)
 dataset = PlanBenchDataset()
 builder = ModelBuilder("domain_placeholder", "problem_placeholder", isHTN=isHTN, requirements=REQUIEREMENTS)
-# with open('/mnt/homeGPU/ipuerta/l2p-htn/tests/usage/prompts/main_builder/llm_output.txt', 'r') as file:
-#     mock_response = file.read()
-# llm = MockLLM([mock_response])
 
+# llm = MockLLM()
+# with open('results/hddl/depots74_original/depots74.llm_response.txt', 'r') as file:
+#     mock_response = file.read()
+# llm.output = mock_response
+
+llm = LLM('gemini-2.0-flash', api_key=token)
 # llm = InferenceClient(model="deepseek-ai/DeepSeek-V3-0324",
 #     provider="nebius", api_key=hf_token, max_tokens=1024)
 # llm = HUGGING_FACE(model_path="Qwen/Qwen2.5-7B-Instruct-1M")
@@ -71,14 +75,13 @@ results_summary = {
 for task in dataset.data_dict.values():
     task_directory = RESULTS_PATH + task['name'] + "/"
     
-    # Create task directory if it doesn't exist
-    if not os.path.exists(task_directory):
-        os.makedirs(task_directory)
-    else: # Skip if the directory already exists
+    if os.path.exists(task_directory): # Skip if the directory already exists
         print(f"Directory {task_directory} already exists. Skipping task {task['name']}.")
         continue
     
+    # Create task directory if it doesn't exist
     print(f"Running task: {task['name']}")
+    os.makedirs(task_directory)
     domain_path = task_directory + task['name'] + ".domain.hddl"
     problem_path = task_directory + task['name'] + ".problem.hddl"
     plan_path = task_directory + task['name'] + ".plan.txt"
@@ -88,18 +91,22 @@ for task in dataset.data_dict.values():
     # Extract domain and problem using the agent
     error_trace, execution_flag = agent.run(task['desc'], domain_path, problem_path, plan_path, response_path)
     
+    # Generate log file if there was an error and update results summary
     if execution_flag != 0:
         results_summary["failed_tasks"] += 1
         results_summary[str(execution_flag)] += 1
         with open(log_path, "w") as log_file:
             log_file.write(f"Execution Flag: {execution_flag}\nError in task execution: {error_trace}")
         print(f"Error in task {task['name']}")
+    
+    # Generate log file for successful execution and update results summary
     else:
         results_summary["successful_tasks"] += 1
         with open(log_path, "w") as log_file:
             log_file.write(f"Execution Flag: {execution_flag}\nTask executed successfully.")
         print(f"Execution successful for task {task['name']}")
-        
+    
+    # Save intermediate results summaryz
     with open(RESULTS_PATH + "results_summary.json", "w") as summary_file:
         json.dump(results_summary, summary_file, indent=4)
     print(f"Results summary: {results_summary}")
