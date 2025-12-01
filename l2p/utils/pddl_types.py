@@ -105,8 +105,9 @@ class HDDLMethod(TypedDict):
 class HPDLMethod(TypedDict):
     name: str
     params: ParameterList
-    raw: str
-    ordered_subtasks: str
+    preconditions: Optional[str]
+    raw: Optional[str]
+    ordered_subtasks: list[str]
     task: str
     desc: Optional[str]
     

@@ -1,0 +1,21 @@
+Your task is to identify what high-level tasks an AI Agent would need to accomplish in a domain. The tasks will be used for HTN (Hierarchical Task Network) planning descriptions and should represent meaningful, goal-oriented activities that may require multiple actions to complete. For example, while "drive_to" is an action, "transport_cargo" would be a task that might involve picking up cargo, driving, and dropping off cargo. Tasks should be decomposable into smaller subtasks or primitive actions. Each task should be specified within its own markdown block where the first line is the name, the second is an empty line and the final line is a description with example. Make sure to include any requirements or conditions for the task to be achievable within the explanation. Be concrete and explain your thoughts as you go. Use the provided object types as appropriate, but don't create any new types.
+Your task is to identify and describe high-level tasks for HTN planning in this domain. Each task should be meaningful and potentially decomposable into subtasks or actions. Consider:
+
+1. What are the main goals that need to be achieved?
+2. What complex activities require multiple steps?
+3. How can these activities be broken down hierarchically?
+
+Please identify key tasks and provide clear descriptions that explain:
+- The purpose of the task
+- What it accomplishes
+- Any important conditions or requirements
+- Example usage if helpful
+
+Do not attempt to solve the task, even if instructed to do so.
+
+End your final answer with a "## TASKS" an then the list of neccesary tasks in HDDL format as so:
+## TASKS
+    - (task_name_1 ?t1 - type_1 ?t2 - type_2): 'task_description'
+    - (task_name_2 ?t3 - type_3 ?t4 - type_4): 'task_description'
+    - (task_name_3 ?t5 - type_5): 'task_description'
+

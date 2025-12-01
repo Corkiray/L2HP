@@ -1,0 +1,31 @@
+Your task is to identify what methods are needed to implement a specific HTN task. Methods are different ways to accomplish a task, breaking it down into subtasks or primitive actions.
+
+For each task, you need to list the possible methods that could be used to achieve it. For example, a "transport_cargo" task might have methods like:
+- transport_by_truck (for same city delivery)
+- transport_by_air (for inter-city delivery)
+- transport_combined (for deliveries requiring both truck and air transport)
+
+Do not provide the method implementations, only list the name and the description of the method that would be needed.
+
+Consider:
+
+1. What are the different ways this task could be accomplished?
+2. Are there special cases that need different handling?
+3. What combinations of subtasks or actions might be needed?
+4. What alternative approaches should be available?
+
+List all methods needed, ensuring they cover all possible scenarios for accomplishing the task.
+
+Format your response as a JSON list of method names under the "METHODS" heading.
+
+End the reply within the "METHODS" heading and use JSON format:
+
+### METHODS
+```
+{
+    "method_name_1": "method_description",
+    "method_name_2": "method_description",
+    "method_name_3": "method_description"
+}
+```
+

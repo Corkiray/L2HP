@@ -1,5 +1,3 @@
-"""TO DO"""
-
 from retry import retry
 from typing_extensions import override
 from .base import BaseLLM
@@ -51,7 +49,7 @@ class GenAIClient(BaseLLM):
         """Generate a response from the Google GenAI model based on the prompt."""
         response = self.client.models.generate_content(
             model=self.model,
-            contents=prompt
+            contents=prompt,
         )
         
         return response.text

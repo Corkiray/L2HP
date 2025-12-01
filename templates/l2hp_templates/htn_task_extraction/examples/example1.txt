@@ -1,0 +1,55 @@
+## Domain
+I have to plan logistics to transport packages within cities via trucks and between cities via airplanes. Locations within a city are directly connected (trucks can move between any two such locations), and so are the cities. In each city there is exactly one truck and each city has one location that serves as an airport.
+
+## Types
+{
+    "location": "A place where objects can be",
+    "city": "A collection of locations",
+    "vehicle": "Something that can move between locations",
+    "truck": "A vehicle that moves within a city",
+    "airplane": "A vehicle that flies between cities",
+    "package": "An object that needs to be transported"
+}
+
+## Reasoning Process
+
+1. Identify Core Objectives:
+   - Primary goal: Move packages from source to destination
+   - Packages can move within cities or between cities
+   - Need to coordinate different types of vehicles
+
+2. Decompose Complex Operations:
+   a) Package Movement Patterns:
+      - Local delivery (within city)
+      - Inter-city delivery (requires air transport)
+      - Combined delivery (local + air + local)
+   
+   b) Vehicle Management Requirements:
+      - Truck operations within cities
+      - Airplane operations between cities
+      - Transfer operations at airports
+
+3. Identify Supporting Operations:
+   - Fleet coordination
+   - Route optimization
+   - Loading/unloading at transfer points
+
+4. Consider Hierarchical Structure:
+   - Top level: Complete delivery tasks
+   - Mid level: City-specific and inter-city operations
+   - Low level: Vehicle and package handling
+
+5. Resource Constraints:
+   - One truck per city
+   - Airports as transfer points
+   - Vehicle capacity and availability
+
+Based on this analysis, here are the required tasks:
+
+## TASKS
+    - (deliver_package ?p - package ?from ?to - location): 'Transport a package from its source to destination location, potentially using multiple vehicles'
+    - (route_through_city ?p - package ?from ?to - location ?c - city ?t - truck): 'Move a package within a single city using a truck'
+    - (transfer_between_cities ?p - package ?src ?dst - city ?plane - airplane): 'Move a package between cities using an airplane'
+    - (manage_fleet ?vehicles - vehicle ?pkgs - package): 'Coordinate multiple vehicles to handle several package deliveries efficiently'
+    - (transfer_at_airport ?p - package ?t - truck ?a - airplane ?loc - location): 'Handle the transfer of a package between truck and airplane at an airport'
+    - (optimize_local_delivery ?t - truck ?c - city ?pkgs - package): 'Plan and execute efficient routes for multiple package deliveries within a city'

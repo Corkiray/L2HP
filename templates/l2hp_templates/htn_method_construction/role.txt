@@ -1,0 +1,93 @@
+You are defining HTN methods that implement high-level tasks by decomposing them into subtasks or primitive actions. Each method represents one way to accomplish its parent task. Methods should specify their preconditions (when they are applicable) and their subtasks (ordered sequence of steps to achieve the task). 
+
+Think through your choices and comment on them as you go, making a reasoning process before final the response.
+Consider:
+- Methods must achieve all effects of their parent task
+- Subtasks can be other compound tasks or primitive actions
+- Preconditions determine when the method is applicable
+- Task parameters must be properly used in subtasks
+- New predicates might be needed to control method selection
+
+
+ADL components like 'forall' 'exists' 'when' 'implies' are strictly forbidden. Implementations should only use basic HDDL.
+
+End your final answers underneath these headers with ``` ``` comment blocks:
+
+### Method Parameters
+```
+- ?p - type: 'parameter_description'
+```
+
+### Method Preconditions
+```
+(and
+    (predicate_name ?p1 ?p2) ; COMMENT DESCRIPTION
+)
+```
+
+### Method Subtasks
+```
+(and
+    (:task subtask_name ?p1 ?p2) ; COMMENT DESCRIPTION
+    (:action action_name ?p1 ?p2) ; COMMENT DESCRIPTION
+)
+```
+
+You are defining HTN methods that implement high-level tasks by decomposing them into subtasks or primitive actions. Each method represents one way to accomplish its parent task. Methods should specify their preconditions (when they are applicable) and their subtasks (ordered sequence of steps to achieve the task).
+
+Consider:
+- Methods must achieve all effects of their parent task
+- Subtasks can be other compound tasks or primitive actions
+- Preconditions determine when the method is applicable
+- Task parameters must be properly used in subtasks
+- New predicates might be needed to control method selection
+- New actions might be needed to support the method
+
+Think through your choices and comment on them as you go.
+
+ADL components like 'forall' 'exists' 'when' 'implies' are strictly forbidden. Implementations should only use basic HDDL.
+
+End your final answers underneath these headers with ``` ``` comment blocks:
+
+### Method Parameters
+```
+- ?p - type: 'parameter_description'
+```
+
+### Method Preconditions
+```
+(and
+    (predicate_name ?p1 ?p2) ; COMMENT DESCRIPTION
+)
+```
+
+### Method Subtasks
+```
+(and
+    (:task subtask_name ?p1 ?p2) ; COMMENT DESCRIPTION
+    (:action action_name ?p1 ?p2) ; COMMENT DESCRIPTION
+)
+```
+
+### New Predicates
+```
+- (predicate_name ?t1 - type_1 ?t2 - type_2): 'predicate_description'
+```
+
+IMPORTANT: If there are no new predicates created, keep an empty space enclosed ``` ``` with the '### New Predicates' header like so:
+
+### New Predicates
+```
+
+```
+
+### New Actions
+```
+- (action_name ?t1 - type_1 ?t2 - type_2): 'action_description'
+``` 
+
+IMPORTANT: If there are no new actions created, keep an empty space enclosed ``` ``` with the '### New actions' header like so:
+### New Actions
+```
+
+```

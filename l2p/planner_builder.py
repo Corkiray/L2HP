@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
+import signal
 from unified_planning.shortcuts import OneshotPlanner
 from unified_planning.io import PDDLReader
 from .utils.pddl_planner import FastDownward as FD
+
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Planner execution timed out")
+
 
 class Planner(ABC):
     
@@ -23,13 +32,40 @@ class UP_Planner(Planner):
         self.planner_name = planner
         self.plan = None
         
-    def solve(self, domain_path, problem_path = None):
-        reader = PDDLReader()
-        if problem_path is not None:
-            problem = reader.parse_problem(domain_path, problem_path)
-        else:
-            problem = reader.parse_problem(domain_path)
+    def solve(self, domain_path, problem_path = None, timeout: int = 15):
+        try:
+            # Set signal alarm for timeout (Unix/Linux only)
+            if timeout:
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout)
             
+            reader = PDDLReader()
+            if problem_path is not None:
+                problem = reader.parse_problem(domain_path, problem_path)
+            else:
+                problem = reader.parse_problem(domain_path)
+                
+            result = OneshotPlanner(name=self.planner_name, problem_kind=problem.kind).solve(problem)
+            
+            # Cancel alarm if set
+            if timeout:
+                signal.alarm(0)
+            
+            if result.plan is not None:
+                plan = str(result.plan.actions)
+                print("Plan:", plan)
+                self.plan = plan
+                return plan
+            else:
+                print("ERROR: No plan found:", result.status)
+                return None
+        except TimeoutException:
+            print(f"ERROR: Planner timed out after {timeout} seconds")
+            return None
+
+    
+    def solve_str(self, domain: str, problem: str):
+        problem = PDDLReader().parse_problem_string(domain, problem)
         result = OneshotPlanner(name=self.planner_name, problem_kind=problem.kind).solve(problem)
         if result.plan is not None:
             plan = str(result.plan)
@@ -39,7 +75,7 @@ class UP_Planner(Planner):
         else:
             print("ERROR: Not plan found:", result.status)
             return None
-    
+
     def get_plan(self):
         return self.plan
     

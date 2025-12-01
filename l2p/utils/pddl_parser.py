@@ -444,7 +444,6 @@ def parse_action(llm_output: str, action_name: str) -> Action:
         "params": parameters,
         "preconditions": preconditions,
         "effects": effects,
-        "raw": llm_response,
     }
 
 
@@ -467,8 +466,12 @@ def parse_params(llm_output: str) -> tuple[OrderedDict, list]:
         if not line:  # skip empty lines
             continue
 
-        if line.startswith("-"):
+        if line.startswith("-") or line.startswith("*"):
             line = line[1:].strip()  # remove the dash and clean up
+
+        # remove stray code/quote markers around the parameter definition
+        line = line.strip("`'\" ")
+        line = line.replace("`", "")
 
         if not line.startswith("?"):
             print(f"[WARNING] Invalid parameter line - must start with '?': '{line}'")
@@ -479,7 +482,7 @@ def parse_params(llm_output: str) -> tuple[OrderedDict, list]:
             parts = line.split(":")
 
             left_side = parts[0].strip()
-            param_parts = [p.strip() for p in left_side.split("-")]
+            param_parts = [p.strip() for p in left_side.split(" - ")]
 
             param_name = param_parts[0].strip(" `")
             if len(param_parts) == 2 and param_parts[1]:
@@ -786,7 +789,7 @@ def combine_blocks(heading_str: str):
     possible_blocks = heading_str.split("```")
     if len(possible_blocks) > 1:
         blocks = [
-            possible_blocks[i] for i in range(1, len(possible_blocks), 2)
+            possible_blocks[i][possible_blocks[i].find("\n")+1:] for i in range(1, len(possible_blocks), 2)
         ]  # obtain string between ```
     else:
         blocks = possible_blocks

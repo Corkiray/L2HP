@@ -1,0 +1,17 @@
+## Domain
+{domain_desc}
+
+## Types
+{types}
+
+## Tasks
+{tasks}
+
+## Method
+{method_name} from task {task}: {method_desc}
+
+### Current Predicates
+{predicates}
+
+### Current Actions
+{actions}

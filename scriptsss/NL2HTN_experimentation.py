@@ -7,11 +7,11 @@ from time import sleep
 from l2p.dataset_builder import PlanBenchDataset
 from l2p.planner_builder import UP_Planner
 from l2p.model_builder import ModelBuilder
-from l2p.llm.genai import GenAIClient as LLM
-from agents.nl2htn import NL2HTNAgent
+from agents.simpleNL2HTN import simpleNL2HTNAgent
 from mySecrets import GeminiApi3_token as token
 from unified_planning.environment import get_environment
-from tests.mock_llm import MockLLM
+from l2p.llm.genai import GenAIClient as LLM
+# from tests.human_llm import HumanLLM as LLM
 
 # ====== Configurations, Constants, Initializations and Loadings ======
 mode = "hddl"  # or "pddl"
@@ -21,14 +21,14 @@ get_environment().error_used_name = False  # Allow same names for different elem
 if mode == "pddl":
     REQUIEREMENTS = [":strips", ":typing", ":negative-preconditions", ":conditional-effects",]
     RESULTS_PATH = "results/pddl/"
-    TEMPLATE_PATH = "templates/model_templates/extract_pddl_model.txt"
+    TEMPLATE_PATH = "templates/l2hp_templates/extract_pddl_model.txt"
     planner = UP_Planner('fast-downward')
     isHTN = False
 
 elif mode == "hddl":
     REQUIEREMENTS = [":strips", ":typing", ":hierarchy", ":negative-preconditions", ":conditional-effects",]
     RESULTS_PATH = "results/hddl/"
-    TEMPLATE_PATH = "templates/model_templates/extract_hddl_model.txt"
+    TEMPLATE_PATH = "templates/l2hp_templates/extract_hddl_model.txt"
     planner = UP_Planner('aries')
     isHTN = True
 
@@ -41,6 +41,7 @@ builder = ModelBuilder("domain_placeholder", "problem_placeholder", isHTN=isHTN,
 #     mock_response = file.read()
 # llm.output = mock_response
 
+# llm = LLM()  # Human-in-the-loop LLM for testing
 llm = LLM('gemini-2.0-flash', api_key=token)
 # llm = InferenceClient(model="deepseek-ai/DeepSeek-V3-0324",
 #     provider="nebius", api_key=hf_token, max_tokens=1024)
@@ -50,7 +51,7 @@ llm = LLM('gemini-2.0-flash', api_key=token)
 with open(TEMPLATE_PATH, 'r') as file:
     extract_hddl_domain_and_problem_prompt =  file.read().strip()
 
-agent = NL2HTNAgent(
+agent = simpleNL2HTNAgent(
     llm=llm,
     builder=builder,
     planner=planner,

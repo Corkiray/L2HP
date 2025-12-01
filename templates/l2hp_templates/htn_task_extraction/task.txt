@@ -1,0 +1,8 @@
+## Domain
+{domain_desc}
+
+## Types 
+{types}
+
+## Current Tasks
+{tasks}

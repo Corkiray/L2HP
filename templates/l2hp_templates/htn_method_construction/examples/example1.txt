@@ -1,0 +1,86 @@
+## Domain
+I have to plan logistics to transport packages within cities via trucks and between cities via airplanes. Each city has multiple locations including one airport, and packages need to be transported using a combination of trucks and airplanes.
+
+## Types
+{
+    "location": "A place where objects can be",
+    "city": "A collection of locations",
+    "truck": "A vehicle that moves within a city",
+    "airplane": "A vehicle that flies between cities",
+    "package": "An object that needs to be transported"
+}
+
+## Tasks
+{
+    "deliver_package": "Transport a package from source to destination",
+    "transport_locally": "Move a package within a city",
+    "fly_between_cities": "Transport by air between cities"
+}
+
+## Method
+deliver_by_air from task deliver_package: "Deliver a package between cities using air transport"
+
+### Current Predicates
+{
+    "at": "(?obj - (either package vehicle) ?loc - location)",
+    "in_city": "(?loc - location ?city - city)",
+    "is_airport": "(?loc - location)",
+    "available": "(?v - (either truck airplane))"
+}
+
+### Current Actions
+{
+    "load_truck ?p - package ?t - truck ?loc - location": "Load a package into a truck at a location",
+    "unload_truck ?p - package ?t - truck ?loc - location": "Unload a package from a truck at a location",
+    "unload_airplane ?p - package ?a - airplane ?loc - location": "Unload a package from an airplane at a location",
+    "drive ?t - truck ?from ?to - location": Dr,ve a truck from one location to another within a city",
+}
+
+Let's define a method for inter-city package delivery using air transport:
+
+### Method Parameters
+```
+- ?p - package: 'The package to be delivered'
+- ?from - location: 'Source location'
+- ?to - location: 'Destination location'
+- ?src_city - city: 'Source city'
+- ?dst_city - city: 'Destination city'
+- ?t1 - truck: 'Truck in source city'
+- ?t2 - truck: 'Truck in destination city'
+- ?plane - airplane: 'Airplane for inter-city transport'
+```
+
+### Method Preconditions
+```
+(and
+    (at ?p ?from)                  ; Package is at source location
+    (in_city ?from ?src_city)      ; Source location is in source city
+    (in_city ?to ?dst_city)        ; Destination location is in destination city
+    (not (= ?src_city ?dst_city))  ; Source and destination cities are different
+    (available ?t1)                ; Source city truck is available
+    (available ?t2)                ; Destination city truck is available
+    (available ?plane)             ; Airplane is available
+)
+```
+
+### Method Subtasks
+```
+(and
+    (:task transport_locally ?p ?from ?src_airport ?t1)  ; Move package to source airport
+    (:action load_airplane ?p ?plane ?src_airport)       ; Load package into airplane
+    (:action fly ?plane ?src_airport ?dst_airport)       ; Fly to destination city
+    (:action unload_airplane ?p ?plane ?dst_airport)     ; Unload package at destination airport
+    (:task transport_locally ?p ?dst_airport ?to ?t2)    ; Move package to final destination
+)
+```
+
+### New Predicates
+```
+- (has_airport ?city - city ?loc - location): 'Indicates which location in a city serves as its airport'
+```
+
+### New Actions
+```
+- load_airplane ?p - package ?a - airplane ?loc - location: 'Load a package into an airplane at a location',
+- fly ?a - airplane ?from ?to - location: 'Fly an airplane from one location to another between cities'
+```

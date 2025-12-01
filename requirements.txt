@@ -8,12 +8,12 @@ typing_extensions
 pyyaml
 
 # The following packages are required for the Local LLM execution.
---extra-index-url https://download.pytorch.org/whl/cu118
-torch
-torchvision
-torchaudio
-transformers==4.46.0
-accelerate==1.6.0
+# --extra-index-url https://download.pytorch.org/whl/cu118
+# torch
+# torchvision
+# torchaudio
+# transformers==4.46.0
+# accelerate==1.6.0
 
 # The following packages are required for the GeminiApi usage.
 google-generativeai
@@ -26,6 +26,7 @@ unified-planning[fast-downward] # For the fast-downward interface, which is used
 #The following packages are required for reading the datasets.
 pandas
 pyarrow
+huggingface-hub
 
 # Apriorily, the following packages are NOT required, but could be needed in case of some error.
 #jupyter==1.0.0

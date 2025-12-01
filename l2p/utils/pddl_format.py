@@ -202,7 +202,10 @@ def format_initial(initial_states: list[dict[str, str]]) -> str:
         # if predicate statement
         elif state.get("pred_name"):
 
-            inner_str = f"({state['pred_name']} {' '.join(state['params'])})"
+            if not state["params"]:
+                inner_str = f"({state['pred_name']})"
+            else:
+                inner_str = f"({state['pred_name']} {' '.join(state['params'])})"
 
             full_str.append(f"(not {inner_str})" if state["neg"] else inner_str)
 
@@ -245,7 +248,7 @@ def indent(string: str, level: int = 2):
     return "   " * level + string.replace("\n", f"\n{'   ' * level}")
 
 
-def remove_comments(text: str, comment_prefixes=[";", "#", "//"]) -> str:
+def remove_comments(text: str, comment_prefixes=[";", "#", "//", ":"]) -> str:
     """Remove comments from text using multiple prefix styles."""
 
     lines = text.splitlines()

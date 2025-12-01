@@ -1,0 +1,11 @@
+## Domain
+{domain_desc}
+
+## Types
+{types}
+
+## Available Tasks
+{tasks}
+
+## Current Task
+{task}

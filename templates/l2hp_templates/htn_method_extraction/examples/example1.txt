@@ -1,0 +1,56 @@
+## Domain
+I have to plan logistics to transport packages within cities via trucks and between cities via airplanes. Locations within a city are directly connected (trucks can move between any two such locations), and so are the cities. In each city there is exactly one truck and each city has one location that serves as an airport.
+
+## Types
+{
+    "location": "A place where objects can be",
+    "city": "A collection of locations",
+    "truck": "A vehicle that moves within a city",
+    "airplane": "A vehicle that flies between cities",
+    "package": "An object that needs to be transported"
+}
+
+## Available Tasks
+{
+    "deliver_package": "Transport a package from source to destination location",
+    "manage_fleet": "Coordinate multiple vehicles for deliveries",
+    "transfer_at_airport": "Handle package transfers between vehicles at airports"
+}
+
+## Current Task
+{
+    "name": "deliver_package",
+    "parameters": {
+        "?p": "package",
+        "?from": "location",
+        "?to": "location"
+    },
+    "description": "Transport a package from its source to destination location"
+}
+
+Let's analyze the different ways to accomplish this delivery task:
+
+1. Local Delivery:
+   - When source and destination are in the same city
+   - Only requires a truck
+   
+2. Inter-city Delivery:
+   - When source and destination are in different cities
+   - Requires truck and airplane coordination
+   
+3. Special Cases:
+   - Direct airport-to-airport delivery
+   - Multi-hop delivery through intermediate cities
+
+### METHODS
+```
+{
+    "deliver_locally": "Method for delivering a package within the same city using only a truck. Applicable when source and destination are in the same city.",
+    
+    "deliver_intercity": "Method for delivering a package between different cities using trucks and an airplane. Handles pickup, air transport, and final delivery.",
+    
+    "deliver_airport_direct": "Special method for direct delivery between airports when both source and destination are airport locations.",
+    
+    "deliver_multihop": "Method for delivering through multiple cities when direct flights aren't available, coordinating multiple vehicles and transfer points."
+}
+```

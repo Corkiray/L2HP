@@ -199,5 +199,5 @@ pandaPIparser/
 
 # Experiments
 playground/
-results/
+results*
 slurm*
