@@ -49,13 +49,13 @@ llm = LLM('gemini-2.0-flash', api_key=token)
 
 
 with open(TEMPLATE_PATH, 'r') as file:
-    extract_hddl_domain_and_problem_prompt =  file.read().strip()
+    prompt_template =  file.read().strip()
 
 agent = simpleNL2HTNAgent(
     llm=llm,
     builder=builder,
     planner=planner,
-    prompt_template=extract_hddl_domain_and_problem_prompt
+    prompt_template=prompt_template
 )
 
 

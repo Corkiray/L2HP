@@ -32,13 +32,14 @@ class UP_Planner(Planner):
         self.planner_name = planner
         self.plan = None
         
-    def solve(self, domain_path, problem_path = None, timeout: int = 15):
+    def solve(self, domain_path, problem_path = None, timeout = 60):
         try:
             # Set signal alarm for timeout (Unix/Linux only)
             if timeout:
                 signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(timeout)
             
+
             reader = PDDLReader()
             if problem_path is not None:
                 problem = reader.parse_problem(domain_path, problem_path)
@@ -46,7 +47,7 @@ class UP_Planner(Planner):
                 problem = reader.parse_problem(domain_path)
                 
             result = OneshotPlanner(name=self.planner_name, problem_kind=problem.kind).solve(problem)
-            
+        
             # Cancel alarm if set
             if timeout:
                 signal.alarm(0)
@@ -60,6 +61,9 @@ class UP_Planner(Planner):
                 print("ERROR: No plan found:", result.status)
                 return None
         except TimeoutException:
+            # Cancel alarm if set
+            if timeout:
+                signal.alarm(0)
             print(f"ERROR: Planner timed out after {timeout} seconds")
             return None
 
